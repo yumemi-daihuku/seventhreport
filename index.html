@@ -133,12 +133,7 @@
       100%{ transform: translateX(0);                  opacity: 1;   }
     }
 
-    /* ─── 数字まとめ ─── */
-    .digit-summary {
-      margin-top: 32px; border: 1px dashed var(--border);
-      padding: 20px 24px; font-size: 13px; line-height: 2.4;
-    }
-    .digit-summary strong { color: var(--amber); letter-spacing: 2px; }
+
 
     /* ─── 添付リスト ─── */
     .attach-list { list-style: none; margin-top: 32px; }
@@ -248,19 +243,6 @@
 
   <section class="section">
     <div class="sec-label">▎ SECTION 04 — 関連ファイル</div>
-    <div class="body-text">
-      <p>
-        この報告書に散在する数字を集めよ。<br>
-        <strong style="color:var(--amber)">それらの積が、次の扉を開く。</strong>
-      </p>
-    </div>
-
-    <!-- スクロール進捗に応じて数字と積を表示 -->
-    <div class="digit-summary">
-      <strong>発見した数字：</strong><br>
-      <span id="summary-text" style="color:var(--dim)">まだスクロールが足りない……</span>
-    </div>
-
     <ul class="attach-list">
       <li>
         <a href="terminal.html">TERMINAL_ACCESS.log</a>
@@ -276,14 +258,8 @@
 <footer>このファイルは自動的に消去されます &nbsp;|&nbsp; 複製禁止 &nbsp;|&nbsp; ██████機関 所有</footer>
 
 <script>
-  // ─── 設定：数字の値と積 ─────────────────────────────────────────────
-  // 7 × 5 × 3 × 9 = 945 → terminal.html の CORRECT_CODE と一致させること
-  const DIGITS = [
-    { id: 'd1', value: 7 },
-    { id: 'd2', value: 5 },
-    { id: 'd3', value: 3 },
-    { id: 'd4', value: 9 },
-  ];
+  // ─── 設定：数字の要素ID ────────────────────────────────────────────
+  const DIGIT_IDS = ['d1', 'd2', 'd3', 'd4'];
 
   // ─── IntersectionObserver：画面に入った要素を .visible に ───────────
   const observer = new IntersectionObserver(entries => {
@@ -291,48 +267,17 @@
       if (entry.isIntersecting) {
         entry.target.classList.add('visible');
         observer.unobserve(entry.target);
-        updateSummary();
       }
     });
   }, {
-    // 画面下端より30%手前に来たら発火（早すぎない絶妙なタイミング）
     rootMargin: '0px 0px -25% 0px',
     threshold: 0,
   });
 
-  DIGITS.forEach(d => {
-    const el = document.getElementById(d.id);
+  DIGIT_IDS.forEach(id => {
+    const el = document.getElementById(id);
     if (el) observer.observe(el);
   });
-
-  // ─── 発見済み数字のまとめを更新 ─────────────────────────────────────
-  function updateSummary() {
-    const found = DIGITS.filter(d =>
-      document.getElementById(d.id)?.classList.contains('visible')
-    );
-    const el = document.getElementById('summary-text');
-    if (!el) return;
-
-    if (found.length === 0) {
-      el.textContent = 'まだスクロールが足りない……';
-      el.style.color = 'var(--dim)';
-      return;
-    }
-
-    const vals = found.map(d => d.value).join(' × ');
-
-    if (found.length < DIGITS.length) {
-      el.innerHTML = `<span style="color:var(--amber)">${vals}</span> &nbsp;… まだある`;
-    } else {
-      const product = DIGITS.reduce((acc, d) => acc * d.value, 1);
-      el.innerHTML =
-        `<span style="color:var(--amber)">${vals}</span><br><br>` +
-        `<span style="color:var(--red-b); letter-spacing:2px; font-size:15px;">` +
-        `積 = <strong>${product}</strong> &nbsp; — これを端末に入力せよ。</span>`;
-    }
-  }
-
-  updateSummary();
 </script>
 </body>
 </html>
