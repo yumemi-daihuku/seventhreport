@@ -7,7 +7,6 @@
   <style>
     :root {
       --bg:        #030303;
-      --surface:   #0a0a0a;
       --border:    #1c1c1c;
       --green:     #00ff41;
       --green-dim: #003b10;
@@ -25,7 +24,8 @@
       background: var(--bg); color: var(--text);
       font-family: var(--font); overflow-x: hidden; cursor: crosshair;
     }
-    /* CRTスキャンライン */
+
+    /* ─── CRTスキャンライン ─── */
     body::before {
       content: ''; position: fixed; inset: 0;
       background: repeating-linear-gradient(0deg,
@@ -35,14 +35,13 @@
     .sweep {
       position: fixed; top: 0; left: 0; right: 0; height: 60px;
       background: linear-gradient(transparent, rgba(0,255,65,0.025), transparent);
-      animation: sweep 7s linear infinite;
-      pointer-events: none; z-index: 8999;
+      animation: sweep 7s linear infinite; pointer-events: none; z-index: 8999;
     }
     @keyframes sweep { from{transform:translateY(-60px)} to{transform:translateY(100vh)} }
 
     /* ─── ヘッダー ─── */
     .site-header {
-      position: sticky; top: 0; z-index: 100;
+      position: sticky; top: 0; z-index: 500;
       background: rgba(3,3,3,0.97); border-bottom: 1px solid var(--border);
       padding: 12px 32px;
       display: flex; align-items: center; justify-content: space-between;
@@ -55,8 +54,6 @@
       margin-right: 6px; box-shadow: 0 0 6px var(--red-b);
       animation: blink 1.1s infinite;
     }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.1} }
-    @keyframes flicker { 0%,97%,100%{opacity:1} 98%{opacity:0.5} 98.5%{opacity:1} 99%{opacity:0.3} 99.5%{opacity:1} }
 
     /* ─── ヒーロー ─── */
     .hero {
@@ -82,12 +79,9 @@
       display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
     .scroll-hint::after { content: '▼'; color: var(--green-mid); animation: bob 1.5s ease-in-out infinite; }
-    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
 
     /* ─── コンテナ ─── */
     .container { max-width: 800px; margin: 0 auto; padding: 0 24px 120px; }
-
-    /* ─── セクション ─── */
     .section { padding: 60px 0; border-bottom: 1px solid var(--border); }
     .sec-label { font-size: 10px; letter-spacing: 4px; color: var(--dim); margin-bottom: 20px; }
     .body-text { font-size: 14px; line-height: 2.4; }
@@ -110,14 +104,11 @@
     }
     .warn-text { color: var(--red-b); font-size: 13px; line-height: 1.9; }
 
-    /* ─── 数字フラッシュ ──────────────────────────────────────────────
-       スクロールで .visible が付くと、ぼかしが晴れてグリッチで出現する
-    ────────────────────────────────────────────────────────────────── */
+    /* ─── 数字フラッシュ ─── */
     .digit-reveal {
       display: inline-block;
       color: var(--red-b); font-size: 1.15em; font-weight: bold;
       text-shadow: 0 0 10px rgba(255,43,43,0.6);
-      /* 初期：完全に見えない */
       opacity: 0; filter: blur(6px);
       transition: opacity 0.4s ease, filter 0.4s ease;
     }
@@ -132,8 +123,6 @@
       75% { transform: translateX(1px);                opacity: 0.9; }
       100%{ transform: translateX(0);                  opacity: 1;   }
     }
-
-
 
     /* ─── 添付リスト ─── */
     .attach-list { list-style: none; margin-top: 32px; }
@@ -152,24 +141,140 @@
       border-top: 1px solid var(--border);
     }
 
-    /* グリッチタイトル */
+    /* ─── グリッチタイトル ─── */
     .glitch { position: relative; display: inline-block; }
     .glitch::before, .glitch::after {
       content: attr(data-text); position: absolute; inset: 0; opacity: 0;
     }
     .glitch::before { color: var(--red); clip-path: polygon(0 30%,100% 30%,100% 50%,0 50%); animation: ga 5s infinite; }
     .glitch::after  { color: var(--green); clip-path: polygon(0 65%,100% 65%,100% 80%,0 80%); animation: gb 5s infinite; }
+
+    /* ════════════════════════════════════════════════════════
+       ホラー演出用スタイル
+    ════════════════════════════════════════════════════════ */
+
+    /* ─── [演出1] 視線テキスト：マウスを追うメッセージ ─── */
+    #eye-text {
+      position: fixed;
+      font-size: 11px; letter-spacing: 2px;
+      color: rgba(192,57,43,0.0); /* 初期は透明 */
+      pointer-events: none; z-index: 8000;
+      white-space: nowrap;
+      text-shadow: 0 0 6px rgba(192,57,43,0.4);
+      transition: color 1.2s ease;
+      transform: translate(-50%, -50%);
+    }
+    #eye-text.visible { color: rgba(192,57,43,0.55); }
+
+    /* ─── [演出2] スクロール停止メッセージ ─── */
+    #stare-msg {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+      font-size: 13px; letter-spacing: 3px; color: var(--red-b);
+      text-shadow: 0 0 12px rgba(255,43,43,0.6);
+      pointer-events: none; z-index: 8000;
+      opacity: 0; transition: opacity 0.4s ease;
+      white-space: nowrap;
+    }
+    #stare-msg.show { opacity: 1; }
+
+    /* ─── [演出3] 30秒暗転オーバーレイ ─── */
+    #blackout {
+      position: fixed; inset: 0;
+      background: #000;
+      z-index: 9500;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.8s ease;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #blackout.on { opacity: 1; pointer-events: all; }
+    #blackout-text {
+      color: var(--red-b);
+      font-size: clamp(14px, 2.5vw, 20px);
+      letter-spacing: 4px; text-align: center;
+      line-height: 2.2; opacity: 0;
+      text-shadow: 0 0 20px rgba(255,43,43,0.5);
+      transition: opacity 1.2s ease 0.6s;
+    }
+    #blackout.on #blackout-text { opacity: 1; }
+
+    /* ─── [演出4] テキスト書き換え：ぶれる演出 ─── */
+    .mutate {
+      display: inline;
+      transition: color 0.1s;
+    }
+    .mutate.changing { color: var(--red-b); }
+
+    /* ─── [演出5] ページ全体シェイク ─── */
+    @keyframes pageshake {
+      0%,100% { transform: translateX(0) translateY(0); }
+      10%,50%  { transform: translateX(-4px) translateY(1px); }
+      20%,60%  { transform: translateX(4px) translateY(-2px); }
+      30%,70%  { transform: translateX(-3px) translateY(2px); }
+      40%,80%  { transform: translateX(3px) translateY(-1px); }
+      90%      { transform: translateX(-2px) translateY(0); }
+    }
+    body.shaking { animation: pageshake 0.5s ease; }
+
+    /* ─── [演出6] 血文字が滲むような赤フラッシュ ─── */
+    @keyframes redflash {
+      0%   { background: #000; }
+      15%  { background: rgba(120,0,0,0.35); }
+      30%  { background: rgba(80,0,0,0.15); }
+      100% { background: #000; }
+    }
+    body.redflash::after {
+      content: ''; position: fixed; inset: 0;
+      animation: redflash 0.6s ease forwards;
+      pointer-events: none; z-index: 9400;
+    }
+
+    /* ─── [演出7] 閉じようとした時の警告オーバーレイ ─── */
+    #close-warn {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.96);
+      z-index: 9600;
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; gap: 28px;
+    }
+    #close-warn.show { display: flex; }
+    #close-warn p {
+      color: var(--red-b); font-size: clamp(14px, 2.5vw, 18px);
+      letter-spacing: 3px; line-height: 2.2; text-align: center;
+      text-shadow: 0 0 16px rgba(255,43,43,0.5);
+    }
+    #close-warn-btn {
+      background: transparent; border: 1px solid var(--dim);
+      color: var(--dim); font-family: var(--font);
+      font-size: 12px; padding: 10px 32px; letter-spacing: 3px;
+      cursor: pointer; transition: color 0.2s, border-color 0.2s;
+    }
+    #close-warn-btn:hover { color: var(--text); border-color: var(--text); }
+
+    /* ─── アニメーション共通 ─── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.1} }
+    @keyframes flicker { 0%,97%,100%{opacity:1} 98%{opacity:0.5} 98.5%{opacity:1} 99%{opacity:0.3} 99.5%{opacity:1} }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
     @keyframes ga { 0%,88%,100%{opacity:0;transform:translateX(-3px)} 90%{opacity:0.8;transform:translateX(3px)} 92%{opacity:0} }
     @keyframes gb { 0%,83%,100%{opacity:0;transform:translateX(3px)} 85%{opacity:0.8;transform:translateX(-3px)} 87%{opacity:0} }
   </style>
 </head>
 <body>
+
+<!-- ホラー演出用オーバーレイ類 -->
+<div id="eye-text">…まだ読んでいる</div>
+<div id="stare-msg"></div>
+<div id="blackout"><div id="blackout-text"></div></div>
+<div id="close-warn">
+  <p id="close-warn-msg">このファイルを閉じようとしている。<br>それは推奨されない。</p>
+  <button id="close-warn-btn" onclick="dismissCloseWarn()">— 読み続ける —</button>
+</div>
+
 <div class="sweep"></div>
 
 <header class="site-header">
   <span class="header-id">FILE: SCP-7TH / KETER</span>
   <span><span class="live-dot"></span>調査継続中</span>
-  <span>DATE: ██/██/20██</span>
+  <span id="header-viewer">VIEWER: 1</span>
 </header>
 
 <div class="hero">
@@ -217,12 +322,13 @@
         現場には合計
         <span class="digit-reveal" id="d3">3</span>
         つの痕跡が残されていた。いずれも人為的なものとは考えにくい。
-        調査員が最初に気づいたのは、壁に刻まれた文様だった。
+        <span class="mutate" id="mut1" data-variants='["調査員が最初に気づいたのは、壁に刻まれた文様だった。","壁の文様は、最初からそこにあったわけではない。","文様は——増えている。"]'>調査員が最初に気づいたのは、壁に刻まれた文様だった。</span>
       </p>
       <p>
         文様は全部で
         <span class="digit-reveal" id="d4">9</span>
-        種類。それぞれが異なる意味を持つとされているが、解読できたものは未だにない。
+        種類。それぞれが異なる意味を持つとされているが、
+        <span class="mutate" id="mut2" data-variants='["解読できたものは未だにない。","解読班は全員、任務中に失踪した。","解読した者は、戻ってこなかった。"]'>解読できたものは未だにない。</span>
       </p>
     </div>
   </section>
@@ -236,7 +342,8 @@
       </p>
       <p>
         「あれは明らかに生き物ではなかった。でも、動いていた。
-        ゆっくりと、確かめるように——」
+        ゆっくりと、
+        <span class="mutate" id="mut3" data-variants='["確かめるように——","こちらを見るように——","あなたを探すように——"]'>確かめるように——</span>」
       </p>
     </div>
   </section>
@@ -258,26 +365,265 @@
 <footer>このファイルは自動的に消去されます &nbsp;|&nbsp; 複製禁止 &nbsp;|&nbsp; ██████機関 所有</footer>
 
 <script>
-  // ─── 設定：数字の要素ID ────────────────────────────────────────────
-  const DIGIT_IDS = ['d1', 'd2', 'd3', 'd4'];
+'use strict';
 
-  // ─── IntersectionObserver：画面に入った要素を .visible に ───────────
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, {
-    rootMargin: '0px 0px -25% 0px',
-    threshold: 0,
-  });
+// ════════════════════════════════════════════════════════
+// 設定
+// ════════════════════════════════════════════════════════
+const CFG = {
+  // スクロール停止何秒後にメッセージを出すか
+  STARE_SEC: 3,
+  // 30秒暗転：表示するメッセージ（改行は \n）
+  BLACKOUT_SEC: 30,
+  BLACKOUT_MSGS: [
+    'あなたはまだここにいる。',
+    '\nそれは、認識された、ということだ。',
+  ],
+  // 視線テキスト：マウス追跡が始まるまでの遅延（ms）
+  EYE_DELAY: 8000,
+  // テキスト書き換え：何秒ごとに変化するか
+  MUTATE_INTERVAL: 18000,
+  // 閉じようとした時の警告メッセージ（段階で変化）
+  CLOSE_MSGS: [
+    'このファイルを閉じようとしている。\nそれは推奨されない。',
+    'まだ読み終わっていない。\n……あなたのことは、もう知っている。',
+    '逃げることはできない。\nここに戻ってくることになる。',
+  ],
+};
 
-  DIGIT_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) observer.observe(el);
+// ════════════════════════════════════════════════════════
+// [共通] IntersectionObserver：数字フラッシュ
+// ════════════════════════════════════════════════════════
+const digitObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      digitObserver.unobserve(e.target);
+    }
   });
+}, { rootMargin: '0px 0px -25% 0px' });
+
+['d1','d2','d3','d4'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) digitObserver.observe(el);
+});
+
+// ════════════════════════════════════════════════════════
+// [演出1] マウス追跡：視線テキスト
+// ════════════════════════════════════════════════════════
+const eyeEl = document.getElementById('eye-text');
+const EYE_MESSAGES = [
+  '…まだ読んでいる',
+  '…なぜ止まった',
+  '…どこを見ている',
+  '…こちらを向け',
+  '…逃げても無駄だ',
+];
+let eyeActive = false;
+let eyeMsgIdx = 0;
+let eyeX = window.innerWidth / 2;
+let eyeY = window.innerHeight / 2;
+// 追跡をゆっくりなめらかにするための現在座標
+let curX = eyeX, curY = eyeY;
+
+// ページ表示から一定時間後に視線テキストを有効化
+setTimeout(() => {
+  eyeActive = true;
+  eyeEl.classList.add('visible');
+
+  // メッセージを定期的に変える
+  setInterval(() => {
+    eyeMsgIdx = (eyeMsgIdx + 1) % EYE_MESSAGES.length;
+    eyeEl.textContent = EYE_MESSAGES[eyeMsgIdx];
+  }, 7000);
+}, CFG.EYE_DELAY);
+
+// マウス座標を記録
+document.addEventListener('mousemove', e => {
+  eyeX = e.clientX;
+  eyeY = e.clientY;
+});
+
+// ラフに追いかける（わずかに遅れ、怖さを演出）
+function trackEye() {
+  if (eyeActive) {
+    // イージング：現在位置からターゲットへ少しずつ近づく
+    curX += (eyeX - curX) * 0.04;
+    curY += (eyeY - curY) * 0.04;
+    // マウスから少しズレた位置に表示（真横に出ると邪魔なのでオフセット）
+    eyeEl.style.left = (curX + 28) + 'px';
+    eyeEl.style.top  = (curY - 18) + 'px';
+  }
+  requestAnimationFrame(trackEye);
+}
+trackEye();
+
+// タッチデバイス対応
+document.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  eyeX = t.clientX; eyeY = t.clientY;
+}, { passive: true });
+
+// ════════════════════════════════════════════════════════
+// [演出2] スクロール停止検知：メッセージ表示 + シェイク
+// ════════════════════════════════════════════════════════
+const stareEl  = document.getElementById('stare-msg');
+const STARE_MSGS = [
+  'なぜ止まった',
+  '読め',
+  '…戻るな',
+  'もっと下だ',
+];
+let stareTimer  = null;
+let stareCount  = 0;
+let lastScrollY = window.scrollY;
+
+function onScroll() {
+  lastScrollY = window.scrollY;
+  // スクロール中はメッセージを消す
+  stareEl.classList.remove('show');
+  clearTimeout(stareTimer);
+
+  stareTimer = setTimeout(() => {
+    // 停止した
+    const msg = STARE_MSGS[stareCount % STARE_MSGS.length];
+    stareEl.textContent = msg;
+    stareEl.classList.add('show');
+    stareCount++;
+
+    // 偶数回目はシェイク＋赤フラッシュで驚かせる
+    if (stareCount % 2 === 0) {
+      triggerShake();
+    }
+
+    // 3秒後にメッセージを消す
+    setTimeout(() => stareEl.classList.remove('show'), 3000);
+  }, CFG.STARE_SEC * 1000);
+}
+
+window.addEventListener('scroll', onScroll, { passive: true });
+
+// ページシェイク
+function triggerShake() {
+  document.body.classList.remove('shaking', 'redflash');
+  // reflowを強制してアニメーションを再発火させる
+  void document.body.offsetWidth;
+  document.body.classList.add('shaking', 'redflash');
+  setTimeout(() => document.body.classList.remove('shaking', 'redflash'), 600);
+}
+
+// ════════════════════════════════════════════════════════
+// [演出3] 30秒滞在で突然の暗転
+// ════════════════════════════════════════════════════════
+const blackoutEl     = document.getElementById('blackout');
+const blackoutTextEl = document.getElementById('blackout-text');
+
+setTimeout(() => {
+  // 暗転テキストをセット
+  blackoutTextEl.textContent = CFG.BLACKOUT_MSGS.join('');
+  blackoutEl.classList.add('on');
+
+  // 5秒後に自動で消える
+  setTimeout(() => {
+    blackoutEl.classList.remove('on');
+  }, 5000);
+}, CFG.BLACKOUT_SEC * 1000);
+
+// ════════════════════════════════════════════════════════
+// [演出4] テキスト書き換え
+// ════════════════════════════════════════════════════════
+// .mutate要素はdata-variantsに書き換えパターンの配列(JSON)を持つ
+// MUTATE_INTERVALごとにランダムに次のバリアントへ変化する
+const mutateEls = document.querySelectorAll('.mutate');
+const mutateState = new Map(); // 要素ごとのインデックス管理
+
+mutateEls.forEach(el => mutateState.set(el, 0));
+
+setInterval(() => {
+  // ランダムに1つのmutate要素を選んで書き換える
+  const targets = Array.from(mutateEls);
+  const el = targets[Math.floor(Math.random() * targets.length)];
+  const variants = JSON.parse(el.dataset.variants);
+  let idx = mutateState.get(el);
+  idx = (idx + 1) % variants.length;
+  mutateState.set(el, idx);
+
+  // 一瞬赤くなってから文字が変わる
+  el.classList.add('changing');
+  setTimeout(() => {
+    el.textContent = variants[idx];
+    el.classList.remove('changing');
+  }, 120);
+
+  // 書き換わった時にシェイク（低確率）
+  if (Math.random() < 0.3) triggerShake();
+}, CFG.MUTATE_INTERVAL);
+
+// ════════════════════════════════════════════════════════
+// [演出5] ヘッダーの閲覧者数がじわじわ増える
+// ════════════════════════════════════════════════════════
+// 「あなた以外も何かが見ている」という演出
+const viewerEl = document.getElementById('header-viewer');
+let viewerCount = 1;
+
+function incrementViewer() {
+  if (viewerCount >= 7) return; // 7名（怪異に関与した人物数）で止まる
+  viewerCount++;
+  viewerEl.textContent = `VIEWER: ${viewerCount}`;
+  viewerEl.style.color = viewerCount >= 5 ? 'var(--red-b)' : 'var(--amber)';
+  // 次の増加タイミングをランダムに（15〜45秒後）
+  setTimeout(incrementViewer, (15 + Math.random() * 30) * 1000);
+}
+setTimeout(incrementViewer, 20000); // 最初の増加は20秒後
+
+// ════════════════════════════════════════════════════════
+// [演出6] タブを閉じようとした時の警告
+// ════════════════════════════════════════════════════════
+const closeWarnEl  = document.getElementById('close-warn');
+const closeWarnMsg = document.getElementById('close-warn-msg');
+let closeWarnCount = 0;
+let suppressClose  = false;
+
+// visibilitychange：タブ切り替えや閉じる動作を検知
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && !suppressClose) {
+    const msg = CFG.CLOSE_MSGS[Math.min(closeWarnCount, CFG.CLOSE_MSGS.length - 1)];
+    closeWarnMsg.innerHTML = msg.replace(/\n/g, '<br>');
+    closeWarnEl.classList.add('show');
+    closeWarnCount++;
+    // シェイク
+    setTimeout(triggerShake, 200);
+  }
+});
+
+function dismissCloseWarn() {
+  suppressClose = true;
+  closeWarnEl.classList.remove('show');
+  // 少し後に再度有効化
+  setTimeout(() => { suppressClose = false; }, 2000);
+}
+
+// ════════════════════════════════════════════════════════
+// [演出7] タイトルが極まれに"別の文字"に書き換わる
+// ════════════════════════════════════════════════════════
+const titleEl = document.querySelector('.hero-title');
+const TITLE_ALTS = [
+  'あなたを見ている',
+  '逃げるな',
+  'もう遅い',
+  '第七報告書',  // 元に戻る
+];
+let titleIdx = 0;
+
+setInterval(() => {
+  if (Math.random() < 0.25) {
+    titleIdx = (titleIdx + 1) % TITLE_ALTS.length;
+    const next = TITLE_ALTS[titleIdx];
+    titleEl.setAttribute('data-text', next);
+    titleEl.textContent = next;
+    if (next !== '第七報告書') triggerShake();
+  }
+}, 25000);
 </script>
 </body>
 </html>
