@@ -342,6 +342,21 @@
 
   document.getElementById('sig-input')
     .addEventListener('keydown', e => { if (e.key === 'Enter') checkSig(); });
+
+  // ─── 最終ファイルへのリンクにフック ──────────────────────────
+  // end.html へ遷移する直前に signal.html のエントリを大量に積む
+  // → end.html から戻ると全部 signal.html に戻ってくるため
+  //   end.html 側の popstate ループと合わせて完全に封鎖できる
+  document.querySelector('.final-link').addEventListener('click', function (e) {
+    e.preventDefault();
+    const dest = this.href;
+    // signal.html のダミー履歴を20枚積む
+    for (let i = 0; i < 20; i++) {
+      history.pushState({ barrier: true }, '', location.href);
+    }
+    // 積み終わってから遷移
+    window.location.href = dest;
+  });
 </script>
 </body>
 </html>

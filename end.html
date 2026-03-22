@@ -156,26 +156,15 @@
 'use strict';
 
 // ─── ブラウザバック封鎖 ───────────────────────────────────────────
-// 1. replaceState で現在のエントリを locked に置き換える
-// 2. さらに pushState で上に積む
-// 3. popstate が発火するたびに即座に再 push
-// → 何回戻っても end.html の locked エントリに当たり続ける
+// location.replace() でhistory自体にend.htmlを上書きし、
+// signal.htmlのエントリを完全に消す。
+// その後popstateで再push。
 (function lockHistory() {
   const url = location.href;
 
-  // 現在のエントリを置き換え（signal.htmlへの参照を消す）
-  history.replaceState({ locked: true }, '', url);
-
-  // さらに上に複数積む（バッファ）
-  for (let i = 0; i < 10; i++) {
-    history.pushState({ locked: true }, '', url);
-  }
-
+  // popstateリスナーを先に登録
   window.addEventListener('popstate', () => {
-    // 発火のたびに即再push
     history.pushState({ locked: true }, '', url);
-
-    // 赤フラッシュ演出（horrorSealForever後でもh-flashは使える）
     const f = document.getElementById('h-flash');
     if (!f) return;
     f.classList.remove('on', 'fade');
@@ -184,6 +173,13 @@
     setTimeout(() => { f.classList.remove('on'); f.classList.add('fade'); }, 80);
     setTimeout(() => f.classList.remove('fade'), 600);
   });
+
+  // signal.htmlのエントリをend.htmlで上書き（戻り先をなくす）
+  // replaceStateで現エントリを置換し、さらに上に積む
+  history.replaceState({ locked: true }, '', url);
+  for (let i = 0; i < 20; i++) {
+    history.pushState({ locked: true }, '', url);
+  }
 })();
 
 // ─── 聴取テキスト定義 ────────────────────────────────────────────
