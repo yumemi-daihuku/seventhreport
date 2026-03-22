@@ -94,10 +94,15 @@
         position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
         font-family:'Courier New',monospace; font-size:13px; letter-spacing:3px;
         color:#ff2b2b; text-shadow:0 0 12px rgba(255,43,43,0.6);
-        pointer-events:none; z-index:8500; white-space:nowrap;
+        pointer-events:none; z-index:8500;
+        white-space:nowrap;
+        max-width:90vw; white-space:normal; text-align:center;
         opacity:0; transition:opacity 0.35s ease;
       }
       #h-bottom.on { opacity:1; }
+      @media(max-width:600px){
+        #h-bottom { font-size:11px; letter-spacing:1px; bottom:16px; }
+      }
 
       /* 暗転 */
       #h-blackout {
@@ -264,7 +269,7 @@
     let tabCount   = 0;
     let suppress   = false;
 
-    // ── マウスがブラウザUI方向へ出た時
+    // ── マウスがブラウザUI方向へ出た時（PC）
     document.addEventListener('mouseleave', e => {
       if (e.clientY > 10 || suppress || _silenced) return;
       suppress = true;
@@ -278,6 +283,26 @@
 
       setTimeout(() => { suppress = false; }, 2500);
     });
+
+    // ── スマホ：画面上端付近でのスワイプアップ離脱を検知
+    let touchStartY = 0;
+    document.addEventListener('touchstart', e => {
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (_silenced || suppress) return;
+      const dy = touchStartY - e.changedTouches[0].clientY;
+      // 上端30px以内から上方向に60px以上スワイプ → 離脱意図とみなす
+      if (touchStartY < 30 && dy > 60) {
+        suppress = true;
+        const msgs = C.leaveMessages[_state] || C.leaveMessages.unsolved;
+        const msg  = msgs[leaveCount % msgs.length];
+        leaveCount++;
+        shake(true);
+        showBottom(msg, 4000);
+        setTimeout(() => { suppress = false; }, 2500);
+      }
+    }, { passive: true });
 
     // ── タブ切り替え（非表示→表示に戻った時）
     // hidden になった瞬間ではなく、"戻ってきた" タイミングで表示することで

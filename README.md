@@ -6,61 +6,47 @@
 horror-arg/
 ├── index.html       入口ページ（怪異報告書 + スクロール数字謎）
 ├── terminal.html    第1関門：ターミナル認証コード入力
-├── archive.html     第2関門：パスワード入力
+├── archive.html     第2関門：証言から導くキーワード入力
 ├── signal.html      第3関門：モールス信号LED点滅を解読
-└── end.html         エンディング
+├── end.html         エンディング（第一回聴取記録）
+├── horror.js        共通ホラー演出ライブラリ
+└── gate.js          end.html到達後の封鎖システム
 ```
 
 ---
 
-## 謎の構造と答え（デフォルト）
+## 謎の構造と答え（現在の設定）
 
 | ページ | 仕掛け | 答え |
 |--------|--------|------|
-| `index.html` | スクロールで数字が出現、積を計算 | **7 × 5 × 3 × 9 = 945** |
-| `terminal.html` | 入力フォームに積を入力 | **945** |
-| `archive.html` | キーワード入力 | **kagami（鏡）** |
-| `signal.html` | LEDランプのモールス信号を解読 | **YOMI** |
+| `index.html` | スクロールで数字が出現（7・5・3）→積を計算 | **105** |
+| `terminal.html` | 被害者一覧の名前の頭文字を順に並べる | **ANOMALY** |
+| `archive.html` | 証言から「黄泉」を導く | **YOMI** |
+| `signal.html` | モールス信号を解読 | **MIRROR** |
 
 ---
 
 ## カスタマイズ方法
 
-### 謎の数字を変える（index.html）
-```html
-<!-- 各 .digit-reveal の中の数字を書き換える -->
-<span class="digit-reveal" id="d1">7</span>
-<span class="digit-reveal" id="d2">5</span>
-<span class="digit-reveal" id="d3">3</span>
-<span class="digit-reveal" id="d4">9</span>
-```
-```javascript
-// JSのDIGITS配列も同じ数字に揃える
-const DIGITS = [
-  { id: 'd1', value: 7 },
-  ...
-];
-```
-
 ### terminal.html のコードを変える
 ```javascript
 const CONFIG = {
-  CORRECT_CODE: '945',   // ← index.html の積と合わせる
+  CORRECT_CODE: 'ANOMALY', // ← 変更
 };
 ```
 
 ### archive.html のパスワードを変える
 ```javascript
 const CONFIG = {
-  ANSWERS: ['kagami', 'かがみ', '鏡'],
+  ANSWERS: ['YOMI', 'yomi', '黄泉'], // ← 変更
 };
 ```
 
 ### signal.html の答え（モールス信号の単語）を変える
 ```javascript
 const CONFIG = {
-  SECRET_WORD: 'YOMI',                   // モールス信号で送信する単語
-  ANSWERS: ['YOMI', 'yomi', '黄泉'],    // 正解として認める文字列
+  SECRET_WORD: 'MIRROR',           // モールス信号で送信する単語
+  ANSWERS: ['MIRROR', 'mirror'],   // 正解として認める文字列
 };
 ```
 
@@ -69,6 +55,6 @@ const CONFIG = {
 ## GitHub Pages へのデプロイ
 
 1. GitHubで新しいリポジトリを作成
-2. 5つのHTMLファイルをすべてpush
+2. 全ファイルをpush（html × 5、horror.js、gate.js）
 3. Settings → Pages → Source: `main` ブランチのルート
 4. `https://<username>.github.io/<repo>/` でアクセス可能
