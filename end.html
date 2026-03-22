@@ -155,12 +155,30 @@
 <script>
 'use strict';
 
-// ─── ブラウザバック封鎖 ──────────────────────────────────────────
-// ページ読み込み時にhistoryを積み、戻ろうとしても同じページに留まる
-history.pushState(null, '', location.href);
-window.addEventListener('popstate', () => {
-  history.pushState(null, '', location.href);
-});
+// ─── ブラウザバック封鎖（強化版） ───────────────────────────────
+// 複数のダミー履歴を積んでおき、popstate発火のたびに再度積み直す
+// これにより何度戻ろうとしても end.html に留まり続ける
+(function lockHistory() {
+  // 初回：ダミー履歴を5枚積んでバッファを作る
+  for (let i = 0; i < 5; i++) {
+    history.pushState({ locked: true }, '', location.href);
+  }
+
+  window.addEventListener('popstate', function onPop(e) {
+    // 即座に再push（連打されても追いつく）
+    history.pushState({ locked: true }, '', location.href);
+
+    // 演出：戻ろうとしたらシェイク（封印後なのでrawFlashで直接叩く）
+    const f = document.getElementById('h-flash');
+    if (f) {
+      f.classList.remove('on', 'fade');
+      void f.offsetWidth;
+      f.classList.add('on');
+      setTimeout(() => { f.classList.remove('on'); f.classList.add('fade'); }, 80);
+      setTimeout(() => f.classList.remove('fade'), 600);
+    }
+  });
+})();
 
 // ─── 聴取テキスト定義 ────────────────────────────────────────────
 const LINES = [
