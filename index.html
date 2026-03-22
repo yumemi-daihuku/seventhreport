@@ -256,7 +256,7 @@
     <div class="body-text">
       <p>
         以下は本事案の関与者
-        <span class="digit-reveal" id="d4">9</span>
+        <span class="digit-reveal" id="d4" id="report-count">9</span>
         件の報告のうち、身元が確認された
         <span style="color:var(--red-b); font-weight:bold;">7名</span>
         の一覧である。
@@ -276,43 +276,43 @@
       <tbody>
         <tr>
           <td>001</td>
-          <td><span class="name-initial">A</span>sakura Makoto（朝倉 誠）</td>
+          <td>Asakura Makoto（朝倉 誠）</td>
           <td>20██/██/03</td>
           <td class="status-missing">行方不明</td>
         </tr>
         <tr>
           <td>002</td>
-          <td><span class="name-initial">N</span>ishimura Haruka（西村 遥）</td>
+          <td>Nishimura Haruka（西村 遥）</td>
           <td>20██/██/07</td>
           <td class="status-missing">行方不明</td>
         </tr>
         <tr>
           <td>003</td>
-          <td><span class="name-initial">O</span>onuma Takumi（大沼 拓海）</td>
+          <td>Oonuma Takumi（大沼 拓海）</td>
           <td>20██/██/11</td>
           <td class="status-missing">行方不明</td>
         </tr>
         <tr>
           <td>004</td>
-          <td><span class="name-initial">M</span>inakuchi Sakura（水口 さくら）</td>
+          <td>Minakuchi Sakura（水口 さくら）</td>
           <td>20██/██/14</td>
           <td class="status-missing">行方不明</td>
         </tr>
         <tr>
           <td>005</td>
-          <td><span class="name-initial">A</span>raki Hayate（荒木 隼）</td>
+          <td>Araki Hayate（荒木 隼）</td>
           <td>20██/██/19</td>
           <td class="status-missing">行方不明</td>
         </tr>
         <tr>
           <td>006</td>
-          <td><span class="name-initial">L</span>agarta Chihiro（流田 千尋）</td>
+          <td>Lagarta Chihiro（流田 千尋）</td>
           <td>20██/██/22</td>
           <td class="status-alive">生存・証言済</td>
         </tr>
         <tr>
           <td>007</td>
-          <td><span class="name-initial">Y</span>uuki Tooru（結城 透）</td>
+          <td>Yuuki Tooru（結城 透）</td>
           <td>20██/██/28</td>
           <td class="status-alive">生存・証言拒否</td>
         </tr>
@@ -341,8 +341,11 @@
       </p>
       <p>
         「彼らは消えたんじゃない。……移動した、んだと思う。
-        あの子たちの名前を、ちゃんと覚えていてほしい。
-        <strong style="color:var(--amber);">彼ら全員の名が、答えを示している。</strong>」
+        あの子たちの名前を、ちゃんと覚えていてほしい。」
+      </p>
+      <p>
+        ——調査員が「最後に何か伝えたいことは」と問うと、流田は少し間を置いてこう言った。<br>
+        「<strong style="color:var(--amber);">"頭"がおかしくなったのかと思った。</strong>」
       </p>
     </div>
   </section>
@@ -378,10 +381,36 @@ const digitObserver = new IntersectionObserver(entries => {
     }
   });
 }, { rootMargin: '0px 0px -25% 0px' });
-['d1','d2','d3','d4'].forEach(id => {
+['d1','d2','d3'].forEach(id => {
   const el = document.getElementById(id);
   if (el) digitObserver.observe(el);
 });
+
+// ── 関与者数：「9」= 7(固定被害者) + VIEWER数
+// horror.js の initViewer が viewer カウントを更新するたびにこちらも追従する
+(function syncReportCount() {
+  const el = document.getElementById('report-count');
+  if (!el) return;
+
+  // MutationObserver で header-viewer の変化を監視
+  const viewerEl = document.getElementById('header-viewer');
+  if (!viewerEl) return;
+
+  function update() {
+    const match = viewerEl.textContent.match(/\d+/);
+    if (!match) return;
+    const viewerCount = parseInt(match[0], 10);
+    const total = 7 + viewerCount;
+    // digit-reveal の .visible 状態を維持しつつテキストだけ更新
+    el.textContent = total;
+    if (!el.classList.contains('visible')) {
+      el.classList.add('visible');
+    }
+  }
+
+  update();
+  new MutationObserver(update).observe(viewerEl, { childList: true, subtree: true, characterData: true });
+})();
 
 // ── テキスト書き換え（変化後は固定）
 // 各 .mutate 要素を data-variants の順に一度ずつ書き換え、最後で止まる

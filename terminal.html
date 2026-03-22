@@ -100,15 +100,15 @@
 
 <script>
   window.HORROR_CONFIG = {
-    blackoutMsg: '認証を試みている。\n……こちらも、お前を認証した。',
+    blackoutMsg: 'そうだ、認証しろ。\n扉の向こうに、答えがある。',
     blackoutDelay: 60000,
     leaveMessages: {
-      unsolved: ['認証が完了していない。', '逃げても扉は開かない。'],
-      solved:   ['次のアーカイブが待っている。', '……先へ進め。'],
+      unsolved: ['待て。扉はまだ開いていない。', '……戻れ。コードを入力しろ。'],
+      solved:   ['次へ進め。もうすぐだ。', '……そうだ、正しい。'],
     },
     tabMessages: {
-      unsolved: ['……どこへ行く。コードを入力しろ。', 'まだ認証が終わっていない。'],
-      solved:   ['次のページへ進め。', '……早く。'],
+      unsolved: ['……戻ってきたか。続きをやれ。', 'コードを入力すれば開く。'],
+      solved:   ['次の扉が待っている。', '……進め。'],
     },
   };
 </script>
@@ -174,12 +174,12 @@
   BOOT.forEach(({ text, cls, ms }) => setTimeout(() => addLog(text, cls), ms));
   setTimeout(showPrompt, 3300);
 
-  // 煽りセリフ（失敗回数順）
+  // 煽りセリフ（失敗回数順）——間違いを指摘しつつ正解に誘導する
   const TAUNTS = [
-    'ちがう。……なぜわからない。',
-    'また外れた。読んだのか、読んでいないのか。',
-    '何度繰り返す気だ。',
-    'そこではない。',
+    'ちがう。……もう一度やれ。',
+    'まだちがう。報告書をよく読んだか。',
+    '何度やっても同じだ。……ヒントをやろう。',
+    'そこではない。落ち着いて考えろ。',
   ];
 
   let fails = 0;
@@ -208,7 +208,7 @@
         window.horrorShowBottom(taunt);
         // 3回失敗でヒント
         if (fails >= 3) {
-          const hint = '……教えよう。報告書に数字が散らばっている。それらを掛け合わせろ。';
+          const hint = '……報告書に数字が散らばっている。それらを掛け合わせれば開く。';
           addLog(hint, 'warn');
           window.horrorShowBottom(hint, 5000);
         }
