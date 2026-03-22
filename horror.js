@@ -49,8 +49,31 @@
     C.tabMessages = Object.assign({}, DEFAULT.tabMessages, window.HORROR_CONFIG.tabMessages);
 
   // ── 状態管理（外部から window.horrorSetState() で変更できる）
-  let _state = 'unsolved'; // 'unsolved' | 'solved'
+  let _state    = 'unsolved'; // 'unsolved' | 'solved'
+  let _silenced = false;      // true の間はメッセージ・シェイクを出さない
+  let _forever  = false;      // true になったら二度と解除しない
+
   window.horrorSetState = function (s) { _state = s; };
+
+  // 種明かし開始時に呼ぶ：演出を完全に止める
+  window.horrorSilence = function () {
+    _silenced = true;
+    // 視線テキストを即座に非表示
+    const eye = document.getElementById('h-eye');
+    if (eye) eye.classList.remove('on');
+    // 画面下メッセージを即消去
+    const bottom = document.getElementById('h-bottom');
+    if (bottom) { bottom.classList.remove('on'); }
+    clearTimeout(_bottomTimer);
+  };
+
+  // 種明かし完了後に呼ぶ：永続的に封印（解除不可）
+  window.horrorSealForever = function () {
+    _forever  = true;
+    _silenced = true;
+    const eye = document.getElementById('h-eye');
+    if (eye) eye.classList.remove('on');
+  };
 
   // ════════════════════════════════════════════════════
   // DOM生成
@@ -128,6 +151,7 @@
   // シェイク＋赤フラッシュ
   // ════════════════════════════════════════════════════
   function shake(withFlash = true) {
+    if (_silenced) return;
     document.body.classList.remove('h-shaking');
     void document.body.offsetWidth;
     document.body.classList.add('h-shaking');
@@ -147,6 +171,7 @@
   // ════════════════════════════════════════════════════
   let _bottomTimer = null;
   function showBottom(msg, duration = 3500) {
+    if (_silenced) return;
     const el = document.getElementById('h-bottom');
     if (!el) return;
     clearTimeout(_bottomTimer);
@@ -154,7 +179,6 @@
     el.classList.add('on');
     _bottomTimer = setTimeout(() => el.classList.remove('on'), duration);
   }
-  // 外部スクリプト（各ページのJS）から呼べるよう公開
   window.horrorShowBottom = showBottom;
   window.horrorShake      = shake;
 
@@ -175,8 +199,12 @@
     let msgIdx = 0;
 
     setTimeout(() => {
-      el.classList.add('on');
+      if (!_silenced) el.classList.add('on');
       setInterval(() => {
+        if (_silenced) {
+          el.classList.remove('on');
+          return;
+        }
         msgIdx = (msgIdx + 1) % MSGS.length;
         el.textContent = MSGS[msgIdx];
       }, 7000);
@@ -206,6 +234,7 @@
     window.addEventListener('scroll', () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
+        if (_silenced) return;
         count++;
         shake(true);
         if (Math.random() < 0.6) showBottom(MSGS[count % MSGS.length]);
@@ -218,6 +247,7 @@
   // ════════════════════════════════════════════════════
   function initBlackout() {
     setTimeout(() => {
+      if (_silenced) return;
       const el  = document.getElementById('h-blackout');
       const txt = el.querySelector('p');
       txt.innerHTML = C.blackoutMsg.replace(/\n/g, '<br>');
@@ -236,7 +266,7 @@
 
     // ── マウスがブラウザUI方向へ出た時
     document.addEventListener('mouseleave', e => {
-      if (e.clientY > 10 || suppress) return;
+      if (e.clientY > 10 || suppress || _silenced) return;
       suppress = true;
 
       const msgs  = C.leaveMessages[_state] || C.leaveMessages.unsolved;
@@ -261,6 +291,7 @@
       // タブが見えた状態に戻った
       if (!wasHidden) return;
       wasHidden = false;
+      if (_silenced) return;
 
       const msgs = C.tabMessages[_state] || C.tabMessages.unsolved;
       const msg  = msgs[tabCount % msgs.length];

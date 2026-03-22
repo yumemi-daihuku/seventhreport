@@ -207,34 +207,56 @@ LINES.forEach((line, i) => {
   if (line.gap) totalDelay += GAP_EXTRA;
 });
 
-// ─── 最後の行（final）が表示された後の演出 ───────────────────────
-// 1. 赤フラッシュ × 3回
-// 2. キャラクター独白を画面下に順番に表示
-// 3. フッター・クレジット・リスタートを表示
-
-const FINAL_LINE_DELAY = totalDelay; // finalの行が出た時刻
-
-// 赤フラッシュ（3回）
-const FLASH_INTERVAL = 500;
-for (let i = 0; i < 3; i++) {
-  setTimeout(() => {
-    if (window.horrorShake) window.horrorShake(true);
-  }, FINAL_LINE_DELAY + 600 + i * FLASH_INTERVAL);
+// ─── 赤フラッシュ直接実行（_silencedをバイパス）────────────────
+function rawFlash() {
+  const f = document.getElementById('h-flash');
+  if (!f) return;
+  f.classList.remove('on', 'fade');
+  void f.offsetWidth;
+  f.classList.add('on');
+  setTimeout(() => { f.classList.remove('on'); f.classList.add('fade'); }, 80);
+  setTimeout(() => f.classList.remove('fade'), 600);
 }
 
-// キャラクター独白を画面下に順番に表示
-const MONO_START = FINAL_LINE_DELAY + 600 + 3 * FLASH_INTERVAL + 800;
+// ─── 画面下メッセージ直接表示（_silencedをバイパス）────────────
+function rawBottom(msg, duration = 2600) {
+  const el = document.getElementById('h-bottom');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), duration);
+}
+
+// ─── 最後の行（final）が表示された後の演出 ───────────────────────
+const FINAL_LINE_DELAY = totalDelay;
+
+// step1: 赤フラッシュ×3回の直前にhorrorSilenceで全演出を封印
+setTimeout(() => {
+  if (window.horrorSilence) window.horrorSilence();
+}, FINAL_LINE_DELAY + 500);
+
+// step2: 赤フラッシュ×3回
+const FLASH_INTERVAL = 500;
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => rawFlash(), FINAL_LINE_DELAY + 600 + i * FLASH_INTERVAL);
+}
+
+// step3: キャラクター独白を画面下に順番に表示（rawBottomでバイパス）
+const MONO_START    = FINAL_LINE_DELAY + 600 + 3 * FLASH_INTERVAL + 800;
 const MONO_INTERVAL = 2800;
 
 MONOLOGUE.forEach((text, i) => {
-  setTimeout(() => {
-    if (window.horrorShowBottom) window.horrorShowBottom(text, MONO_INTERVAL - 200);
-  }, MONO_START + i * MONO_INTERVAL);
+  setTimeout(() => rawBottom(text, MONO_INTERVAL - 200), MONO_START + i * MONO_INTERVAL);
 });
 
-// フッター・クレジット・リスタートは独白が全部終わった後
-const afterDelay = MONO_START + MONOLOGUE.length * MONO_INTERVAL + 1200;
+// step4: 独白が全部終わったら永続封印
+const SEAL_DELAY = MONO_START + MONOLOGUE.length * MONO_INTERVAL + 300;
+setTimeout(() => {
+  if (window.horrorSealForever) window.horrorSealForever();
+}, SEAL_DELAY);
 
+// step5: フッター・クレジット・リスタートを独白後に表示
+const afterDelay = SEAL_DELAY + 1200;
 ['foot', 'credits', 'restart'].forEach((id, idx) => {
   const el = document.getElementById(id);
   if (el) el.style.animationDelay = (afterDelay + idx * 500) + 'ms';
