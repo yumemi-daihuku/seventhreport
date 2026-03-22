@@ -66,7 +66,7 @@
     .doc-preview.unlocked { filter: none; color: var(--text); }
     .pw-sec { border: 1px solid var(--border); padding: 28px; background: var(--sur); }
     .pw-lbl { font-size: 11px; letter-spacing: 3px; color: var(--dim); margin-bottom: 20px; }
-    .pw-wrap { display: flex; align-items: center; gap: 0; }
+    .pw-wrap { display: flex; align-items: center; }
     .pw-wrap::before {
       content: '鍵：'; color: var(--purple);
       font-size: 13px; margin-right: 12px; white-space: nowrap;
@@ -110,8 +110,7 @@
       display: inline-block; margin-top: 18px;
       color: var(--green); text-decoration: none;
       font-size: 13px; letter-spacing: 2px;
-      border-bottom: 1px solid var(--green);
-      transition: text-shadow 0.2s;
+      border-bottom: 1px solid var(--green); transition: text-shadow 0.2s;
     }
     .next-link:hover { text-shadow: 0 0 8px var(--green); }
   </style>
@@ -122,11 +121,14 @@
   window.HORROR_CONFIG = {
     blackoutMsg: 'ファイルを開こうとしている。\n……中身は、お前を待っていた。',
     blackoutDelay: 60000,
-    closeMessages: [
-      'まだ復号が終わっていない。',
-      'キーを知っているはずだ。',
-      '……どこへ行く。',
-    ],
+    leaveMessages: {
+      unsolved: ['まだ復号が終わっていない。', '……どこへ行く。'],
+      solved:   ['まだやるべきことが残っている。', '……次の信号を探せ。'],
+    },
+    tabMessages: {
+      unsolved: ['……キーを知っているはずだ。', 'まだ鍵が刺さっていない。'],
+      solved:   ['次のページへ進め。', '……早く。'],
+    },
   };
 </script>
 
@@ -149,6 +151,7 @@
         ← ここにあなたのストーリーを書いてください
       </div>
     </div>
+
     <div class="pw-sec">
       <div class="pw-lbl">▎ 暗号化ファイル — 解読キーを入力</div>
       <div class="pw-wrap">
@@ -177,38 +180,51 @@
 
 <script>
   const CONFIG = { ANSWERS: ['kagami', 'かがみ', '鏡'] };
+
+  // 煽りセリフ（失敗回数順）
+  const TAUNTS = [
+    'ちがう。……なぜわからない。',
+    'また外れた。読んだのか、読んでいないのか。',
+    '何度繰り返す気だ。',
+    'そこではない。',
+  ];
+
   let fails = 0;
   function checkPW() {
-    const inp = document.getElementById('pw-input');
-    const msg = document.getElementById('msg');
-    const hint = document.getElementById('hint');
-    const reveal = document.getElementById('reveal');
+    const inp     = document.getElementById('pw-input');
+    const msg     = document.getElementById('msg');
+    const hint    = document.getElementById('hint');
+    const reveal  = document.getElementById('reveal');
     const preview = document.getElementById('preview');
-    const val = inp.value.trim().toLowerCase();
+    const val     = inp.value.trim().toLowerCase();
     if (!val) return;
+
     if (CONFIG.ANSWERS.map(a => a.toLowerCase()).includes(val)) {
       inp.classList.add('ok'); inp.disabled = true;
       msg.textContent = '復号完了。ファイルのロックが解除されました。';
-      msg.className = 'msg ok';
+      msg.className   = 'msg ok';
       preview.classList.add('unlocked');
+      // 解決済み状態に移行
+      window.horrorSetState('solved');
       setTimeout(() => reveal.classList.add('show'), 600);
     } else {
       fails++;
       inp.classList.add('err');
       setTimeout(() => inp.classList.remove('err'), 400);
-      // 失敗回数に応じて煽りを段階的に変える
-      const taunts = [
-        'ちがう。……なぜわからない。',
-        'また外れた。読んだのか、読んでいないのか。',
-        '何度繰り返す気だ。',
-        'そこではない。',
-      ];
-      msg.textContent = taunts[Math.min(fails - 1, taunts.length - 1)];
-      msg.className = 'msg err';
-      // 3回失敗でキャラクターがヒントを渡す
-      if (fails >= 3) hint.classList.add('show');
+
+      const taunt = TAUNTS[Math.min(fails - 1, TAUNTS.length - 1)];
+      msg.textContent = taunt;
+      msg.className   = 'msg err';
+      // 画面下にも表示
+      window.horrorShowBottom(taunt);
+
+      if (fails >= 3) {
+        hint.classList.add('show');
+        window.horrorShowBottom('……鍵は、証言の中にある。繰り返された言葉だ。', 5000);
+      }
     }
   }
+
   document.getElementById('pw-input')
     .addEventListener('keydown', e => { if (e.key === 'Enter') checkPW(); });
 </script>

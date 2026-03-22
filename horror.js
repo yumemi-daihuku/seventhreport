@@ -1,43 +1,72 @@
 'use strict';
 // ════════════════════════════════════════════════════════════════
 // horror.js — 全ページ共通ホラー演出
-// 各ページの <body> 直前で <script src="horror.js"></script> として読み込む
-// ページ固有の設定は window.HORROR_CONFIG で上書き可能
+//
+// ページ固有設定：window.HORROR_CONFIG で上書き
+// 状況通知API：window.horrorSetState('solved') で解決済みを伝える
 // ════════════════════════════════════════════════════════════════
 
 (function () {
 
-  // ── デフォルト設定（ページ側で window.HORROR_CONFIG を定義すると上書きされる）
   const DEFAULT = {
-    eyeDelay:        8000,   // 視線テキストが出始めるまでの時間(ms)
-    stareInterval:   15000,  // スクロール停止判定の秒数(ms)
-    blackoutDelay:   60000,  // 暗転が発生するまでの時間(ms)
-    blackoutMsg:     'お前はまだここにいる。\nそれは、認識された、ということだ。',
-    viewerMax:       7,      // 閲覧者数の上限
-    closeMessages: [         // タブ離脱時メッセージ（繰り返すたびに進む）
-      'このページから離れようとしている。',
-      '……戻ってくることになる。',
-    ],
+    eyeDelay:      8000,
+    stareInterval: 15000,
+    blackoutDelay: 60000,
+    blackoutMsg:   'お前はまだここにいる。\nそれは、認識された、ということだ。',
+    viewerMax:     7,
+
+    // ── 離脱メッセージ：状態ごとに定義
+    // state: 'unsolved'（未解決）/ 'solved'（解決済み）
+    leaveMessages: {
+      unsolved: [
+        'このページから離れようとしている。',
+        '……戻ってくることになる。',
+      ],
+      solved: [
+        'まだやるべきことが残っている。',
+        '次へ進め。',
+      ],
+    },
+
+    // ── タブ切り替え時メッセージ：状態ごと
+    tabMessages: {
+      unsolved: [
+        '……どこへ行く。',
+        'まだ終わっていない。',
+      ],
+      solved: [
+        '次のページが待っている。',
+        '……早く進め。',
+      ],
+    },
   };
+
   const C = Object.assign({}, DEFAULT, window.HORROR_CONFIG || {});
+  // leaveMessages / tabMessages は深くマージ
+  if (window.HORROR_CONFIG?.leaveMessages)
+    C.leaveMessages = Object.assign({}, DEFAULT.leaveMessages, window.HORROR_CONFIG.leaveMessages);
+  if (window.HORROR_CONFIG?.tabMessages)
+    C.tabMessages = Object.assign({}, DEFAULT.tabMessages, window.HORROR_CONFIG.tabMessages);
+
+  // ── 状態管理（外部から window.horrorSetState() で変更できる）
+  let _state = 'unsolved'; // 'unsolved' | 'solved'
+  window.horrorSetState = function (s) { _state = s; };
 
   // ════════════════════════════════════════════════════
-  // DOM生成：演出用要素を <body> に追加
+  // DOM生成
   // ════════════════════════════════════════════════════
   function injectDOM() {
     const css = `
-      /* ── 視線テキスト ── */
       #h-eye {
         position:fixed; pointer-events:none; z-index:8000;
         font-family:'Courier New',monospace; font-size:11px; letter-spacing:2px;
         color:rgba(192,57,43,0); white-space:nowrap;
         text-shadow:0 0 6px rgba(192,57,43,0.4);
-        transition:color 1.2s ease;
-        transform:translate(0,-50%);
+        transition:color 1.2s ease; transform:translate(0,-50%);
       }
       #h-eye.on { color:rgba(192,57,43,0.55); }
 
-      /* ── 画面下メッセージ（スクロール停止 / タブ離脱共用） ── */
+      /* 画面下メッセージ */
       #h-bottom {
         position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
         font-family:'Courier New',monospace; font-size:13px; letter-spacing:3px;
@@ -47,7 +76,7 @@
       }
       #h-bottom.on { opacity:1; }
 
-      /* ── 暗転オーバーレイ ── */
+      /* 暗転 */
       #h-blackout {
         position:fixed; inset:0; background:#000;
         z-index:9500; opacity:0; pointer-events:none;
@@ -64,7 +93,7 @@
       }
       #h-blackout.on p { opacity:1; }
 
-      /* ── ページシェイク ── */
+      /* シェイク */
       @keyframes h-shake {
         0%,100%{transform:translateX(0) translateY(0)}
         10%,50% {transform:translateX(-4px) translateY(1px)}
@@ -75,44 +104,34 @@
       }
       body.h-shaking { animation:h-shake 0.5s ease; }
 
-      /* ── 赤フラッシュ ── */
+      /* 赤フラッシュ */
       #h-flash {
         position:fixed; inset:0; pointer-events:none; z-index:9400;
-        background:transparent;
-        transition:background 0s;
+        background:transparent; transition:background 0s;
       }
-      #h-flash.on {
-        background:rgba(110,0,0,0.32);
-        transition:background 0.08s ease;
-      }
-      #h-flash.fade {
-        background:transparent;
-        transition:background 0.5s ease;
-      }
+      #h-flash.on   { background:rgba(110,0,0,0.32); transition:background 0.08s ease; }
+      #h-flash.fade { background:transparent; transition:background 0.5s ease; }
     `;
-
     const style = document.createElement('style');
     style.textContent = css;
     document.head.appendChild(style);
 
-    const html = `
+    document.body.insertAdjacentHTML('afterbegin', `
       <div id="h-eye">…まだ読んでいる</div>
       <div id="h-bottom"></div>
       <div id="h-flash"></div>
       <div id="h-blackout"><p></p></div>
-    `;
-    document.body.insertAdjacentHTML('afterbegin', html);
+    `);
   }
 
   // ════════════════════════════════════════════════════
-  // [共通] シェイク＋赤フラッシュ
+  // シェイク＋赤フラッシュ
   // ════════════════════════════════════════════════════
   function shake(withFlash = true) {
     document.body.classList.remove('h-shaking');
-    void document.body.offsetWidth; // reflow
+    void document.body.offsetWidth;
     document.body.classList.add('h-shaking');
     setTimeout(() => document.body.classList.remove('h-shaking'), 550);
-
     if (withFlash) {
       const f = document.getElementById('h-flash');
       f.classList.remove('on', 'fade');
@@ -124,16 +143,20 @@
   }
 
   // ════════════════════════════════════════════════════
-  // [共通] 画面下メッセージ表示
+  // 画面下メッセージ表示（外部から呼べるよう公開）
   // ════════════════════════════════════════════════════
-  let bottomTimer = null;
+  let _bottomTimer = null;
   function showBottom(msg, duration = 3500) {
     const el = document.getElementById('h-bottom');
-    clearTimeout(bottomTimer);
+    if (!el) return;
+    clearTimeout(_bottomTimer);
     el.textContent = msg;
     el.classList.add('on');
-    bottomTimer = setTimeout(() => el.classList.remove('on'), duration);
+    _bottomTimer = setTimeout(() => el.classList.remove('on'), duration);
   }
+  // 外部スクリプト（各ページのJS）から呼べるよう公開
+  window.horrorShowBottom = showBottom;
+  window.horrorShake      = shake;
 
   // ════════════════════════════════════════════════════
   // [演出1] マウス追跡：視線テキスト
@@ -174,36 +197,24 @@
   }
 
   // ════════════════════════════════════════════════════
-  // [演出2] スクロール停止 → 15秒後にシェイク＋メッセージ（ランダムで表示）
+  // [演出2] スクロール停止 → シェイク＋メッセージ
   // ════════════════════════════════════════════════════
   function initStare() {
-    const MSGS = [
-      'なぜ止まった',
-      '読め',
-      '戻るな',
-      'もっと下だ',
-      '…見ている',
-    ];
+    const MSGS = ['なぜ止まった', '読め', '戻るな', 'もっと下だ', '…見ている'];
     let timer = null;
     let count = 0;
-
     window.addEventListener('scroll', () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         count++;
-        shake(true); // 常にシェイク＋フラッシュ
-
-        // メッセージはランダムで約60%の確率で表示
-        if (Math.random() < 0.6) {
-          const msg = MSGS[count % MSGS.length];
-          showBottom(msg);
-        }
+        shake(true);
+        if (Math.random() < 0.6) showBottom(MSGS[count % MSGS.length]);
       }, C.stareInterval);
     }, { passive: true });
   }
 
   // ════════════════════════════════════════════════════
-  // [演出3] 暗転（60秒後）
+  // [演出3] 暗転
   // ════════════════════════════════════════════════════
   function initBlackout() {
     setTimeout(() => {
@@ -216,25 +227,20 @@
   }
 
   // ════════════════════════════════════════════════════
-  // [演出4] タブ離脱検知 → シェイク＋画面下メッセージ
+  // [演出4] 離脱検知（マウスが上端から出る＋タブ切り替え）
   // ════════════════════════════════════════════════════
   function initLeaveDetect() {
     let leaveCount = 0;
+    let tabCount   = 0;
     let suppress   = false;
 
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden || suppress) return;
-      // ページが見えている状態でvisibilitychangeが戻ってきた
-      // = タブを切り替えて戻ってきた → その時にも出す
-    });
-
-    // mouseleave：マウスがウィンドウ外（≒閉じようとした）
+    // ── マウスがブラウザUI方向へ出た時
     document.addEventListener('mouseleave', e => {
-      // 上端に向かって出た場合のみ（ブラウザUIへの移動 = 閉じようとする動き）
       if (e.clientY > 10 || suppress) return;
       suppress = true;
 
-      const msg = C.closeMessages[Math.min(leaveCount, C.closeMessages.length - 1)];
+      const msgs  = C.leaveMessages[_state] || C.leaveMessages.unsolved;
+      const msg   = msgs[leaveCount % msgs.length];
       leaveCount++;
 
       shake(true);
@@ -242,16 +248,39 @@
 
       setTimeout(() => { suppress = false; }, 2500);
     });
+
+    // ── タブ切り替え（非表示→表示に戻った時）
+    // hidden になった瞬間ではなく、"戻ってきた" タイミングで表示することで
+    // 「戻ってきてしまったな」という演出にする
+    let wasHidden = false;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        wasHidden = true;
+        return;
+      }
+      // タブが見えた状態に戻った
+      if (!wasHidden) return;
+      wasHidden = false;
+
+      const msgs = C.tabMessages[_state] || C.tabMessages.unsolved;
+      const msg  = msgs[tabCount % msgs.length];
+      tabCount++;
+
+      // 少し遅延させてから表示（戻ってきた直後に出す）
+      setTimeout(() => {
+        shake(true);
+        showBottom(msg, 4000);
+      }, 400);
+    });
   }
 
   // ════════════════════════════════════════════════════
-  // [演出5] 閲覧者数カウンター（header-viewerがある場合）
+  // [演出5] 閲覧者数カウンター
   // ════════════════════════════════════════════════════
   function initViewer() {
     const el = document.getElementById('header-viewer');
     if (!el) return;
     let count = 1;
-
     function inc() {
       if (count >= C.viewerMax) return;
       count++;

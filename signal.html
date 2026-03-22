@@ -138,11 +138,14 @@
   window.HORROR_CONFIG = {
     blackoutMsg: '信号を受信している。\n……信号も、お前を受信した。',
     blackoutDelay: 60000,
-    closeMessages: [
-      '信号の解読が終わっていない。',
-      'まだ聞こえているはずだ。',
-      '……逃げるな。',
-    ],
+    leaveMessages: {
+      unsolved: ['信号の解読が終わっていない。', '……逃げるな。'],
+      solved:   ['まだやるべきことが残っている。', '……最後まで向き合え。'],
+    },
+    tabMessages: {
+      unsolved: ['……まだ聞こえているはずだ。', '信号を読め。'],
+      solved:   ['最終ファイルへ進め。', '……もう少しだ。'],
+    },
   };
 </script>
 
@@ -214,6 +217,8 @@
     '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-',
     '5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
   };
+
+  // 参照表
   const refGrid = document.getElementById('ref-grid');
   Object.entries(MORSE).slice(0,26).forEach(([ch,code]) => {
     const d = document.createElement('div');
@@ -221,18 +226,23 @@
     d.innerHTML = `<span>${ch}</span> ${code}`;
     refGrid.appendChild(d);
   });
+
   function toggleRef(btn) {
     const ref = document.getElementById('morse-ref');
     ref.classList.toggle('show');
-    btn.textContent = ref.classList.contains('show') ? '▾ 参照表を閉じる' : '▸ モールス参照表を見る（ヒント）';
+    btn.textContent = ref.classList.contains('show')
+      ? '▾ 参照表を閉じる'
+      : '▸ モールス参照表を見る（ヒント）';
   }
+
+  // チャンネル生成
   const channelsEl = document.getElementById('channels');
   const word = CONFIG.SECRET_WORD.toUpperCase();
   word.split('').forEach((ch,idx) => {
     const code = MORSE[ch] || '';
-    const row = document.createElement('div');
+    const row  = document.createElement('div');
     row.className = 'channel'; row.id = `ch-${idx}`;
-    const num = document.createElement('div');
+    const num  = document.createElement('div');
     num.className = 'ch-num'; num.textContent = `CH${idx+1}`;
     const lamps = document.createElement('div');
     lamps.className = 'lamps'; lamps.id = `lamps-${idx}`;
@@ -245,6 +255,8 @@
     row.appendChild(num); row.appendChild(lamps);
     channelsEl.appendChild(row);
   });
+
+  // モールス再生
   let isPlaying = false;
   function startMorse() {
     if (isPlaying) return;
@@ -253,42 +265,48 @@
     btn.textContent = '再生中...'; btn.disabled = true;
     const speedMul = parseFloat(document.getElementById('speed-range').value);
     const UNIT = Math.round(300 / speedMul);
-    let schedule = [];
-    let t = 400;
+    let schedule = [], t = 400;
     word.split('').forEach((ch,ci) => {
       const code = MORSE[ch] || '';
       schedule.push({ type:'active', ci, on:true, t });
       code.split('').forEach((sym,si) => {
-        const lampId = `lamp-${ci}-${si}`;
         const dur = sym === '-' ? UNIT*3 : UNIT;
-        schedule.push({ type:'lamp', lampId, on:true, t });
+        schedule.push({ type:'lamp', id:`lamp-${ci}-${si}`, on:true, t });
         t += dur;
-        schedule.push({ type:'lamp', lampId, on:false, t });
+        schedule.push({ type:'lamp', id:`lamp-${ci}-${si}`, on:false, t });
         t += UNIT;
       });
       t += UNIT*2;
       schedule.push({ type:'active', ci, on:false, t });
       t += UNIT*2;
     });
-    schedule.forEach(({ type, lampId, ci, on, t: delay }) => {
+    schedule.forEach(({ type, id, ci, on, t: d }) => {
       setTimeout(() => {
         if (type === 'lamp') {
-          const el = document.getElementById(lampId);
-          if (el) el.classList.toggle('on', on);
+          document.getElementById(id)?.classList.toggle('on', on);
         } else {
-          const row = document.getElementById(`ch-${ci}`);
-          if (row) row.classList.toggle('active', on);
+          document.getElementById(`ch-${ci}`)?.classList.toggle('active', on);
         }
-      }, delay);
+      }, d);
     });
     setTimeout(() => {
       isPlaying = false;
       btn.textContent = '▶ もう一度再生'; btn.disabled = false;
     }, t + 200);
   }
+
   document.getElementById('speed-range').addEventListener('input', function () {
     document.getElementById('speed-label').textContent = `×${this.value}`;
   });
+
+  // 煽りセリフ
+  const TAUNTS = [
+    'ちがう。……なぜわからない。',
+    'また外れた。ちゃんと見ているのか。',
+    '何度繰り返す気だ。',
+    'そこではない。',
+  ];
+
   let fails = 0;
   function checkSig() {
     const inp = document.getElementById('sig-input');
@@ -296,29 +314,35 @@
     const fin = document.getElementById('final');
     const val = inp.value.trim();
     if (!val) return;
+
     if (CONFIG.ANSWERS.map(a => a.toLowerCase()).includes(val.toLowerCase())) {
       inp.classList.add('ok'); inp.disabled = true;
       msg.textContent = 'シグナル解読成功。隠されたメッセージを復元しました。';
-      msg.className = 'decode-msg ok';
+      msg.className   = 'decode-msg ok';
+      // 解決済み状態に移行
+      window.horrorSetState('solved');
       setTimeout(() => fin.classList.add('show'), 800);
     } else {
       fails++;
       inp.classList.add('err');
       setTimeout(() => inp.classList.remove('err'), 400);
-      // 失敗回数に応じて煽りを段階的に変える
-      const taunts = [
-        'ちがう。……なぜわからない。',
-        'また外れた。ちゃんと見ているのか。',
-        '何度繰り返す気だ。',
-        'そこではない。',
-      ];
-      msg.textContent = taunts[Math.min(fails - 1, taunts.length - 1)];
-      msg.className = 'decode-msg err';
-      // 3回失敗でキャラクターがヒントを渡す
-      if (fails >= 3) msg.textContent += ' ……信号を、もっとゆっくり見ろ。参照表も使え。';
+
+      const taunt = TAUNTS[Math.min(fails - 1, TAUNTS.length - 1)];
+      msg.textContent = taunt;
+      msg.className   = 'decode-msg err';
+      // 画面下にも表示
+      window.horrorShowBottom(taunt);
+
+      if (fails >= 3) {
+        const hint = '……信号を、もっとゆっくり見ろ。参照表も使え。';
+        msg.textContent = taunt + ' ' + hint;
+        window.horrorShowBottom(hint, 5000);
+      }
     }
   }
-  document.getElementById('sig-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkSig(); });
+
+  document.getElementById('sig-input')
+    .addEventListener('keydown', e => { if (e.key === 'Enter') checkSig(); });
 </script>
 </body>
 </html>

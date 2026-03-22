@@ -64,8 +64,7 @@
     .prog { height: 2px; background: var(--green-d); overflow: hidden; }
     .prog::after {
       content: ''; display: block; height: 100%;
-      background: var(--green);
-      animation: prog 2s linear forwards;
+      background: var(--green); animation: prog 2s linear forwards;
     }
     @keyframes prog { from{width:0} to{width:100%} }
     .prompt { display: flex; align-items: center; gap: 10px; margin-top: 24px; }
@@ -80,8 +79,7 @@
     .submit-btn {
       background: transparent; border: 1px solid var(--green-m);
       color: var(--green); font-family: var(--font);
-      font-size: 12px; padding: 5px 16px;
-      letter-spacing: 2px; cursor: pointer;
+      font-size: 12px; padding: 5px 16px; letter-spacing: 2px; cursor: pointer;
       transition: background 0.2s, box-shadow 0.2s;
     }
     .submit-btn:hover { background: var(--green-d); box-shadow: 0 0 10px rgba(0,255,65,0.2); }
@@ -100,16 +98,18 @@
 </head>
 <body>
 
-<!-- このページ独自の暗転メッセージを設定 -->
 <script>
   window.HORROR_CONFIG = {
     blackoutMsg: '認証を試みている。\n……こちらも、お前を認証した。',
     blackoutDelay: 60000,
-    closeMessages: [
-      '認証が完了していない。',
-      '逃げても扉は開かない。',
-      'コードを入力しろ。',
-    ],
+    leaveMessages: {
+      unsolved: ['認証が完了していない。', '逃げても扉は開かない。'],
+      solved:   ['次のアーカイブが待っている。', '……先へ進め。'],
+    },
+    tabMessages: {
+      unsolved: ['……どこへ行く。コードを入力しろ。', 'まだ認証が終わっていない。'],
+      solved:   ['次のページへ進め。', '……早く。'],
+    },
   };
 </script>
 
@@ -126,7 +126,6 @@
   <div class="overlay ng" id="ov-ng">✕ ACCESS DENIED</div>
 </div>
 
-<!-- 共通ホラー演出（設定の後に読み込む） -->
 <script src="horror.js"></script>
 
 <script>
@@ -139,14 +138,15 @@
     { text: 'セキュリティモジュール: OK',   cls: 'ok',   ms: 700  },
     { text: 'ネットワーク: 接続確立',       cls: 'ok',   ms: 1050 },
     { text: '不正アクセス試行: 検出 [3件]', cls: 'warn', ms: 1450 },
-    { text: '─────────────────────────────',cls: 'sys',  ms: 1800 },
+    { text: '─────────────────────────────', cls: 'sys', ms: 1800 },
     { text: '端末認証システム v2.1',        cls: 'sys',  ms: 2000 },
-    { text: '─────────────────────────────',cls: 'sys',  ms: 2100 },
+    { text: '─────────────────────────────', cls: 'sys', ms: 2100 },
     { text: 'このシステムへのアクセスには', cls: 'ok',   ms: 2500 },
     { text: '認証コードが必要です。',       cls: 'ok',   ms: 2800 },
-    { text: '─────────────────────────────',cls: 'sys',  ms: 3100 },
+    { text: '─────────────────────────────', cls: 'sys', ms: 3100 },
   ];
   const screen = document.getElementById('screen');
+
   function addLog(text, cls) {
     const el = document.createElement('div');
     el.className = `log ${cls}`;
@@ -154,6 +154,7 @@
     screen.appendChild(el);
     screen.scrollTop = screen.scrollHeight;
   }
+
   function showPrompt() {
     const row = document.createElement('div');
     row.className = 'prompt';
@@ -169,8 +170,18 @@
     inp.focus();
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
   }
+
   BOOT.forEach(({ text, cls, ms }) => setTimeout(() => addLog(text, cls), ms));
   setTimeout(showPrompt, 3300);
+
+  // 煽りセリフ（失敗回数順）
+  const TAUNTS = [
+    'ちがう。……なぜわからない。',
+    'また外れた。読んだのか、読んでいないのか。',
+    '何度繰り返す気だ。',
+    'そこではない。',
+  ];
+
   let fails = 0;
   function check() {
     const inp = document.getElementById('code-input');
@@ -178,26 +189,29 @@
     const val = inp.value.trim();
     addLog('> ' + val, 'ok');
     inp.value = ''; inp.disabled = true;
+
     if (val === CONFIG.CORRECT_CODE) {
       document.getElementById('ov-ok').style.display = 'flex';
       setTimeout(() => addLog('認証成功。', 'ok'), 300);
       setTimeout(() => addLog('次のセクションへアクセスを許可します。', 'ok'), 600);
+      // 解決済み状態に移行
+      window.horrorSetState('solved');
       setTimeout(() => { window.location.href = CONFIG.NEXT_PAGE; }, 2400);
     } else {
       fails++;
       document.getElementById('ov-ng').style.display = 'flex';
       setTimeout(() => {
         document.getElementById('ov-ng').style.display = 'none';
-        // 失敗回数に応じて煽りを段階的に変える
-        const taunts = [
-          `認証失敗。[${fails}回目] ……ちがう。なぜわからない。`,
-          `認証失敗。[${fails}回目] ……また外れた。読んだのか、読んでいないのか。`,
-          `認証失敗。[${fails}回目] ……何度繰り返す気だ。`,
-          `認証失敗。[${fails}回目] ……そこではない。`,
-        ];
-        addLog(taunts[Math.min(fails - 1, taunts.length - 1)], 'err');
-        // 3回失敗でキャラクターがヒントを渡す
-        if (fails >= 3) addLog('……教えよう。報告書に数字が散らばっている。それらを掛け合わせろ。', 'warn');
+        const taunt = TAUNTS[Math.min(fails - 1, TAUNTS.length - 1)];
+        addLog(taunt, 'err');
+        // 失敗メッセージを画面下にも表示
+        window.horrorShowBottom(taunt);
+        // 3回失敗でヒント
+        if (fails >= 3) {
+          const hint = '……教えよう。報告書に数字が散らばっている。それらを掛け合わせろ。';
+          addLog(hint, 'warn');
+          window.horrorShowBottom(hint, 5000);
+        }
         inp.disabled = false; inp.focus();
       }, 1200);
     }
