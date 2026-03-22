@@ -12,12 +12,11 @@
     eyeDelay:        8000,   // 視線テキストが出始めるまでの時間(ms)
     stareInterval:   15000,  // スクロール停止判定の秒数(ms)
     blackoutDelay:   60000,  // 暗転が発生するまでの時間(ms)
-    blackoutMsg:     'あなたはまだここにいる。\nそれは、認識された、ということだ。',
+    blackoutMsg:     'お前はまだここにいる。\nそれは、認識された、ということだ。',
     viewerMax:       7,      // 閲覧者数の上限
     closeMessages: [         // タブ離脱時メッセージ（繰り返すたびに進む）
       'このページから離れようとしている。',
       '……戻ってくることになる。',
-      'もう遅い。',
     ],
   };
   const C = Object.assign({}, DEFAULT, window.HORROR_CONFIG || {});

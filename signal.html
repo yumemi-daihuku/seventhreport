@@ -136,7 +136,7 @@
 
 <script>
   window.HORROR_CONFIG = {
-    blackoutMsg: '信号を受信している。\n……信号も、あなたを受信した。',
+    blackoutMsg: '信号を受信している。\n……信号も、お前を受信した。',
     blackoutDelay: 60000,
     closeMessages: [
       '信号の解読が終わっていない。',
@@ -305,9 +305,17 @@
       fails++;
       inp.classList.add('err');
       setTimeout(() => inp.classList.remove('err'), 400);
-      msg.textContent = `一致しません [${fails}回]`;
+      // 失敗回数に応じて煽りを段階的に変える
+      const taunts = [
+        'ちがう。……なぜわからない。',
+        'また外れた。ちゃんと見ているのか。',
+        '何度繰り返す気だ。',
+        'そこではない。',
+      ];
+      msg.textContent = taunts[Math.min(fails - 1, taunts.length - 1)];
       msg.className = 'decode-msg err';
-      if (fails >= 3) msg.textContent += ' — 各チャンネルの点滅パターンを順に読め';
+      // 3回失敗でキャラクターがヒントを渡す
+      if (fails >= 3) msg.textContent += ' ……信号を、もっとゆっくり見ろ。参照表も使え。';
     }
   }
   document.getElementById('sig-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkSig(); });

@@ -120,7 +120,7 @@
 
 <script>
   window.HORROR_CONFIG = {
-    blackoutMsg: 'ファイルを開こうとしている。\n……中身は、あなたを待っていた。',
+    blackoutMsg: 'ファイルを開こうとしている。\n……中身は、お前を待っていた。',
     blackoutDelay: 60000,
     closeMessages: [
       'まだ復号が終わっていない。',
@@ -156,7 +156,7 @@
                spellcheck="false" placeholder="キーワードを入力...">
       </div>
       <div class="hint-text" id="hint">
-        ヒント：前のページの証言に、繰り返し登場する物体の名前がある。
+        ……鍵は、証言の中にある。繰り返された言葉だ。
       </div>
       <button class="pw-btn" onclick="checkPW()">DECRYPT</button>
       <div class="msg" id="msg"></div>
@@ -196,8 +196,16 @@
       fails++;
       inp.classList.add('err');
       setTimeout(() => inp.classList.remove('err'), 400);
-      msg.textContent = `復号失敗。キーが一致しません。[${fails}回]`;
+      // 失敗回数に応じて煽りを段階的に変える
+      const taunts = [
+        'ちがう。……なぜわからない。',
+        'また外れた。読んだのか、読んでいないのか。',
+        '何度繰り返す気だ。',
+        'そこではない。',
+      ];
+      msg.textContent = taunts[Math.min(fails - 1, taunts.length - 1)];
       msg.className = 'msg err';
+      // 3回失敗でキャラクターがヒントを渡す
       if (fails >= 3) hint.classList.add('show');
     }
   }

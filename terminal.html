@@ -103,7 +103,7 @@
 <!-- このページ独自の暗転メッセージを設定 -->
 <script>
   window.HORROR_CONFIG = {
-    blackoutMsg: '認証を試みている。\n……こちらも、あなたを認証した。',
+    blackoutMsg: '認証を試みている。\n……こちらも、お前を認証した。',
     blackoutDelay: 60000,
     closeMessages: [
       '認証が完了していない。',
@@ -188,8 +188,16 @@
       document.getElementById('ov-ng').style.display = 'flex';
       setTimeout(() => {
         document.getElementById('ov-ng').style.display = 'none';
-        addLog(`認証失敗 [${fails}回目]`, 'err');
-        if (fails >= 3) addLog('ヒント: 報告書の数字を集めよ。それらの積だ。', 'warn');
+        // 失敗回数に応じて煽りを段階的に変える
+        const taunts = [
+          `認証失敗。[${fails}回目] ……ちがう。なぜわからない。`,
+          `認証失敗。[${fails}回目] ……また外れた。読んだのか、読んでいないのか。`,
+          `認証失敗。[${fails}回目] ……何度繰り返す気だ。`,
+          `認証失敗。[${fails}回目] ……そこではない。`,
+        ];
+        addLog(taunts[Math.min(fails - 1, taunts.length - 1)], 'err');
+        // 3回失敗でキャラクターがヒントを渡す
+        if (fails >= 3) addLog('……教えよう。報告書に数字が散らばっている。それらを掛け合わせろ。', 'warn');
         inp.disabled = false; inp.focus();
       }, 1200);
     }
