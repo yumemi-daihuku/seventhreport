@@ -94,17 +94,6 @@
       opacity: 0; animation: linein 0.5s ease forwards;
     }
 
-    .restart {
-      display: inline-block; color: var(--dim); text-decoration: none;
-      font-size: 11px; letter-spacing: 3px;
-      border-bottom: 1px solid var(--dim); padding-bottom: 2px;
-      opacity: 0; animation: linein 0.5s ease forwards;
-      transition: color 0.2s, border-color 0.2s;
-      text-align: center;
-    }
-    .restart:hover { color: var(--text); border-color: var(--text); }
-    .center { text-align: center; }
-
     @keyframes linein {
       to { opacity: 1; transform: translateY(0); }
     }
@@ -153,11 +142,7 @@
       <div style="margin-top:8px; font-size:10px; color:#1a1a1a;">── プレイしてくれてありがとうございました ──</div>
     </div>
 
-    <div class="center">
-      <a href="index.html" class="restart" id="restart" style="animation-delay:999s;">▸ 最初から読み直す</a>
-    </div>
 
-  </div>
 </main>
 
 <script src="horror.js"></script>
@@ -272,7 +257,7 @@ setTimeout(() => {
 
 // step5: フッター・クレジット・リスタートを独白後に表示
 const afterDelay = SEAL_DELAY + 1200;
-['foot', 'credits', 'restart'].forEach((id, idx) => {
+['foot', 'credits'].forEach((id, idx) => {
   const el = document.getElementById(id);
   if (el) el.style.animationDelay = (afterDelay + idx * 500) + 'ms';
 });
