@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARCHIVE — 閲覧制限ファイル</title>
+  <!--
+    ARG LAYER 2:
+    このページのパスワードはストーリー中に隠されている。
+    デフォルトの答え: kagami（鏡）
+    ← 自由に変更してください
+  -->
+  <style>
+    :root {
+      --bg:      #06060a;
+      --surface: #0d0d15;
+      --border:  #1e1e2e;
+      --purple:  #7b2fff;
+      --purple-dim: #2a0a5e;
+      --red:     #c0392b;
+      --red-b:   #ff3333;
+      --amber:   #ffb300;
+      --text:    #b8b8d0;
+      --text-dim:#3a3a5a;
+      --green:   #00ff41;
+      --font:    'Courier New', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow-x: hidden;
+    }
+
+    /* ─── CRTオーバーレイ ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ─── ヘッダー ─── */
+    .archive-header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+    }
+
+    .archive-title { color: var(--purple); font-size: 13px; letter-spacing: 3px; }
+
+    .auth-badge {
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: 3px 10px;
+      font-size: 10px;
+      letter-spacing: 2px;
+      animation: blink-border 2s infinite;
+    }
+
+    /* ─── メイン ─── */
+    main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .archive-box {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* ─── ファイルカード ─── */
+    .file-card {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--purple);
+      padding: 24px 28px;
+      background: var(--surface);
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-card::after {
+      content: 'LOCKED';
+      position: absolute;
+      top: 50%;
+      right: -20px;
+      transform: translateY(-50%) rotate(90deg);
+      color: var(--purple-dim);
+      font-size: 48px;
+      letter-spacing: 8px;
+      pointer-events: none;
+      font-weight: bold;
+    }
+
+    .file-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+
+    .file-name {
+      color: var(--text);
+      font-size: 15px;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .file-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.8;
+    }
+
+    /* ─── 文書プレビュー（内容は伏せ字） ─── */
+    .doc-preview {
+      background: rgba(0,0,0,0.4);
+      border: 1px dashed var(--border);
+      padding: 16px;
+      margin-top: 16px;
+      font-size: 12px;
+      line-height: 2;
+      color: var(--text-dim);
+      filter: blur(3px);
+      user-select: none;
+      transition: filter 0.6s;
+    }
+
+    .doc-preview.unlocked { filter: none; color: var(--text); }
+
+    /* ─── パスワードフォーム ─── */
+    .pw-section {
+      border: 1px solid var(--border);
+      padding: 28px;
+      background: var(--surface);
+    }
+
+    .pw-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .pw-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .pw-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .pw-input-wrap::before {
+      content: '鍵:';
+      color: var(--purple);
+      font-size: 13px;
+      margin-right: 12px;
+      white-space: nowrap;
+    }
+
+    #pw-input {
+      flex: 1;
+      background: rgba(123,47,255,0.04);
+      border: none;
+      border-bottom: 1px solid var(--purple-dim);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 8px 4px;
+      letter-spacing: 3px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #pw-input:focus { border-bottom-color: var(--purple); }
+    #pw-input.error { border-bottom-color: var(--red-b); animation: shake 0.3s; }
+    #pw-input.success { border-bottom-color: var(--green); }
+
+    .pw-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      line-height: 1.8;
+      padding: 12px;
+      border-left: 2px solid var(--purple-dim);
+      display: none;
+    }
+
+    .pw-hint.visible { display: block; }
+
+    .pw-btn {
+      align-self: flex-start;
+      background: transparent;
+      border: 1px solid var(--purple);
+      color: var(--purple);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 10px 28px;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pw-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--purple);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.2s;
+      z-index: -1;
+    }
+
+    .pw-btn:hover { box-shadow: 0 0 16px rgba(123,47,255,0.3); }
+    .pw-btn:hover::before { transform: scaleX(1); }
+    .pw-btn:hover { color: #fff; }
+
+    /* ─── メッセージ表示 ─── */
+    .msg {
+      margin-top: 16px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      min-height: 20px;
+      transition: color 0.2s;
+    }
+
+    .msg.error   { color: var(--red-b); }
+    .msg.success { color: var(--green); }
+
+    /* ─── ストーリーテキスト（解錠後に表示） ─── */
+    .story-reveal {
+      display: none;
+      margin-top: 28px;
+      padding: 20px;
+      border: 1px solid var(--green);
+      background: rgba(0,255,65,0.03);
+      font-size: 13px;
+      line-height: 2;
+      color: var(--text);
+      animation: fadein 1s ease;
+    }
+
+    .story-reveal.visible { display: block; }
+
+    .next-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: var(--green);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 2px;
+      border-bottom: 1px solid var(--green);
+      transition: text-shadow 0.2s;
+    }
+
+    .next-link:hover { text-shadow: 0 0 8px var(--green); }
+
+    /* ─── アニメーション ─── */
+    @keyframes blink-border {
+      0%,100% { border-color: var(--red); }
+      50% { border-color: transparent; }
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%,75% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+    }
+
+    @keyframes fadein {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── ヘッダー ─── -->
+<header class="archive-header">
+  <span class="archive-title">ARCHIVE SYSTEM — RESTRICTED</span>
+  <span>NODE: ██-████</span>
+  <div class="auth-badge">! 閲覧制限</div>
+</header>
+
+<!-- ─── メイン ─── -->
+<main>
+  <div class="archive-box">
+
+    <!-- ─── ファイルカード ─── -->
+    <div class="file-card">
+      <div class="file-meta">
+        FILE_ID: ARC-███-0071 &nbsp;|&nbsp; CLASS: EYES_ONLY &nbsp;|&nbsp; SIZE: ██.█ KB
+      </div>
+      <div class="file-name">「████の証言記録」— 第三回聴取</div>
+      <div class="file-desc">
+        このファイルは暗号化されています。<br>
+        解読キーを知っている者のみが閲覧できます。
+      </div>
+
+      <!-- ─── 伏せ字プレビュー ─── -->
+      <div class="doc-preview" id="doc-preview">
+        調査員：では、もう一度聞かせてください。その夜、あなたは何を見たのですか。<br>
+        証人：鏡の中に… 自分ではない何かが映っていました。<br>
+        調査員：それは人間の形をしていましたか？<br>
+        証人：いいえ。でも、笑っていた。確かに、笑っていた。<br><br>
+        ← ここにあなたのストーリーを書いてください
+      </div>
+    </div>
+
+    <!-- ─── パスワードフォーム ─── -->
+    <div class="pw-section">
+      <div class="pw-label">▎ 暗号化ファイル — 解読キーを入力</div>
+
+      <div class="pw-form">
+        <div class="pw-input-wrap">
+          <input
+            id="pw-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="キーワードを入力..."
+          >
+        </div>
+
+        <!-- ヒント（失敗3回で表示） -->
+        <div class="pw-hint" id="pw-hint">
+          ヒント: 前のページに残された証言の中に、<br>
+          繰り返し登場する物体の名前がある。
+        </div>
+
+        <button class="pw-btn" onclick="checkPassword()">DECRYPT</button>
+
+        <div class="msg" id="msg"></div>
+      </div>
+
+      <!-- ─── 解錠後コンテンツ ─── -->
+      <div class="story-reveal" id="story-reveal">
+        <div style="color:var(--green); font-size:11px; letter-spacing:3px; margin-bottom:14px;">
+          ▶ 復号成功
+        </div>
+
+        <p>ここに、解錠後に表示するストーリーや次の謎へのヒントを書いてください。</p>
+        <br>
+        <p style="color:var(--text-dim)">
+          例：「彼女が最後に残した言葉は、周波数の中に隠されている。<br>
+          その信号を探せ。」
+        </p>
+
+        <a href="signal.html" class="next-link">
+          ▸ SIGNAL_DATA.wav を解析する →
+        </a>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  // ─── 設定：パスワードをここで管理 ───────────────────────────────────
+  const CONFIG = {
+    // 複数の正解を許可できる（大文字小文字どちらもOKにする場合はlowercaseで統一）
+    CORRECT_PASSWORDS: ['kagami', 'かがみ', '鏡'],  // ← 自由に書き換え
+    CASE_SENSITIVE: false,
+  };
+
+  let failCount = 0;
+
+  // ─── パスワード検証 ──────────────────────────────────────────────────
+  function checkPassword() {
+    const input    = document.getElementById('pw-input');
+    const msg      = document.getElementById('msg');
+    const hint     = document.getElementById('pw-hint');
+    const reveal   = document.getElementById('story-reveal');
+    const preview  = document.getElementById('doc-preview');
+
+    let val = input.value.trim();
+    if (!val) return;
+
+    // 大文字小文字の正規化
+    if (!CONFIG.CASE_SENSITIVE) val = val.toLowerCase();
+
+    const answers = CONFIG.CASE_SENSITIVE
+      ? CONFIG.CORRECT_PASSWORDS
+      : CONFIG.CORRECT_PASSWORDS.map(p => p.toLowerCase());
+
+    if (answers.includes(val)) {
+      // ─── 成功 ─────────────────────────────────────────────────────
+      input.classList.remove('error');
+      input.classList.add('success');
+      input.disabled = true;
+      msg.textContent = '復号完了。ファイルのロックが解除されました。';
+      msg.className   = 'msg success';
+
+      // プレビューのブラーを解除
+      preview.classList.add('unlocked');
+
+      // ストーリー表示
+      setTimeout(() => { reveal.classList.add('visible'); }, 600);
+
+    } else {
+      // ─── 失敗 ─────────────────────────────────────────────────────
+      failCount++;
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 400);
+
+      msg.textContent = `復号失敗。キーが一致しません。[${failCount}回]`;
+      msg.className   = 'msg error';
+
+      // 3回失敗でヒントを表示
+      if (failCount >= 3) {
+        hint.classList.add('visible');
+      }
+    }
+  }
+
+  // ─── Enterキーで送信 ─────────────────────────────────────────────────
+  document.getElementById('pw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') checkPassword();
+  });
+</script>
+
+</body>
+</html>

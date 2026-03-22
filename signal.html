@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNAL — 周波数解析</title>
+  <!--
+    ARG LAYER 3:
+    Canvasに描かれたスペクトログラム風の画像に文字列が隠されている。
+    Canvas上に薄く描かれた文字を見つけ、入力する。
+    デフォルトの答え: YOMI（黄泉）
+    ← CONFIGで変更可能
+  -->
+  <style>
+    :root {
+      --bg:      #020408;
+      --surface: #050c12;
+      --border:  #0a1a24;
+      --cyan:    #00e5ff;
+      --cyan-dim:#003a42;
+      --red:     #ff2b2b;
+      --amber:   #ffb300;
+      --text:    #88bbcc;
+      --text-dim:#1a3340;
+      --green:   #00ff41;
+      --font:    'Courier New', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ─── ヘッダー ─── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+    }
+
+    .header-title { color: var(--cyan); font-size: 13px; letter-spacing: 3px; }
+
+    .recording-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--red);
+      font-size: 11px;
+    }
+
+    .rec-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: blink 1s infinite;
+    }
+
+    /* ─── メインレイアウト ─── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 0;
+      min-height: calc(100vh - 53px);
+    }
+
+    @media (max-width: 700px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── 左：スペクトログラム ─── */
+    .spectrogram-panel {
+      padding: 32px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    /* ─── 再生コントロール ─── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .play-btn {
+      background: transparent;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 8px 20px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .play-btn:hover {
+      background: var(--cyan-dim);
+      box-shadow: 0 0 12px rgba(0,229,255,0.2);
+    }
+
+    .time-display {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      flex: 1;
+    }
+
+    /* ─── 波形Canvas ─── */
+    #waveform-canvas {
+      width: 100%;
+      height: 80px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: block;
+    }
+
+    /* ─── スペクトログラムCanvas（謎の本体） ─── */
+    .spectrogram-wrap {
+      position: relative;
+      border: 1px solid var(--cyan-dim);
+      overflow: hidden;
+    }
+
+    .spectrogram-label-y {
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%) rotate(-90deg);
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    #spectrogram-canvas {
+      display: block;
+      width: 100%;
+      cursor: crosshair;
+    }
+
+    .freq-axis {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--text-dim);
+      padding: 4px 2px 0;
+    }
+
+    /* ─── 右：解析パネル ─── */
+    .analysis-panel {
+      padding: 28px 24px;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .info-block {
+      padding: 14px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      line-height: 1.9;
+    }
+
+    .info-block .lbl { color: var(--cyan); font-size: 10px; letter-spacing: 2px; margin-bottom: 8px; }
+    .info-block .val { color: var(--text-dim); }
+    .info-block .val.anom { color: var(--amber); }
+
+    /* ─── 入力フォーム ─── */
+    .decode-form {
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--cyan);
+      padding: 20px;
+    }
+
+    .decode-label {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    #signal-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--cyan-dim);
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 14px;
+      letter-spacing: 4px;
+      padding: 8px 0;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #signal-input:focus { border-bottom-color: var(--cyan); }
+    #signal-input.error   { border-bottom-color: var(--red); animation: shake 0.3s; }
+    #signal-input.success { border-bottom-color: var(--green); }
+
+    .decode-btn {
+      width: 100%;
+      margin-top: 16px;
+      background: transparent;
+      border: 1px solid var(--cyan-dim);
+      color: var(--text-dim);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 10px;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .decode-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0,229,255,0.15);
+    }
+
+    .decode-msg {
+      margin-top: 12px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      min-height: 18px;
+    }
+
+    .decode-msg.error   { color: var(--red); }
+    .decode-msg.success { color: var(--green); }
+
+    /* ─── 解錠後ストーリー ─── */
+    .final-reveal {
+      display: none;
+      padding: 16px;
+      border: 1px solid var(--green);
+      background: rgba(0,255,65,0.03);
+      font-size: 12px;
+      line-height: 2;
+      animation: fadein 1s ease;
+    }
+
+    .final-reveal.visible { display: block; }
+
+    .final-link {
+      display: block;
+      margin-top: 16px;
+      color: var(--green);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 2px;
+      border: 1px solid var(--green);
+      padding: 10px 16px;
+      text-align: center;
+      transition: background 0.2s;
+    }
+
+    .final-link:hover { background: rgba(0,255,65,0.08); }
+
+    /* ─── アニメーション ─── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      25%,75%{transform:translateX(-4px)}
+      50%{transform:translateX(4px)}
+    }
+
+    @keyframes fadein {
+      from{opacity:0;transform:translateY(8px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">SIGNAL ANALYZER — FREQUENCY DOMAIN</span>
+  <div class="recording-badge">
+    <div class="rec-dot"></div>
+    <span>ANALYZING</span>
+  </div>
+  <span>CHANNEL: ██</span>
+</header>
+
+<div class="main-grid">
+
+  <!-- ─── 左：スペクトログラム ─── -->
+  <div class="spectrogram-panel">
+    <div>
+      <div class="panel-label">▎ 音声ファイル — SIGNAL_DATA.wav</div>
+
+      <!-- 再生コントロール -->
+      <div class="controls">
+        <button class="play-btn" onclick="togglePlay()">▶ 再生</button>
+        <span class="time-display" id="time-display">00:00 / 00:██</span>
+        <span style="font-size:11px; color:var(--red)">⚠ 異常信号検出</span>
+      </div>
+
+      <!-- 波形 -->
+      <canvas id="waveform-canvas" height="80"></canvas>
+    </div>
+
+    <!-- スペクトログラム（謎の本体） -->
+    <div>
+      <div class="panel-label">▎ スペクトログラム — 周波数解析</div>
+      <div class="spectrogram-wrap">
+        <span class="spectrogram-label-y">FREQUENCY (Hz)</span>
+        <canvas id="spectrogram-canvas" height="260"></canvas>
+      </div>
+      <div class="freq-axis">
+        <span>0 Hz</span>
+        <span>2 kHz</span>
+        <span>4 kHz</span>
+        <span>6 kHz</span>
+        <span>8 kHz</span>
+      </div>
+    </div>
+
+    <!-- ヒント -->
+    <div style="font-size:11px; color:var(--text-dim); line-height:1.8; padding-top:8px;">
+      ※ スペクトログラムをよく見ると、特定の周波数帯に<br>
+      　異常なパターンが存在する。
+      <!-- ARG HINT: 画像の中央上部、明るい帯に注目 -->
+    </div>
+  </div>
+
+  <!-- ─── 右：解析パネル ─── -->
+  <div class="analysis-panel">
+
+    <!-- ファイル情報 -->
+    <div class="info-block">
+      <div class="lbl">ファイル情報</div>
+      <div class="val">サンプルレート: ██,███ Hz</div>
+      <div class="val">チャンネル: MONO</div>
+      <div class="val">長さ: 00:██</div>
+      <div class="val anom">異常帯域: 3200–3400 Hz ⚠</div>
+    </div>
+
+    <!-- 異常検出 -->
+    <div class="info-block">
+      <div class="lbl">異常信号ログ</div>
+      <div class="val">00:04 — 不規則なパルス検出</div>
+      <div class="val">00:08 — パターン反復確認</div>
+      <div class="val anom">00:12 — 未知のエンコード検出 ⚠</div>
+      <div class="val">00:16 — 信号消失</div>
+    </div>
+
+    <!-- 入力フォーム -->
+    <div class="decode-form">
+      <div class="decode-label">▎ 検出された文字列を入力</div>
+      <input
+        id="signal-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="シグナルコード..."
+      >
+      <button class="decode-btn" onclick="checkSignal()">DECODE</button>
+      <div class="decode-msg" id="decode-msg"></div>
+    </div>
+
+    <!-- 解錠後 -->
+    <div class="final-reveal" id="final-reveal">
+      <div style="color:var(--green); font-size:10px; letter-spacing:3px; margin-bottom:10px;">
+        ▶ シグナル解読完了
+      </div>
+      <p>信号の解読に成功した。</p>
+      <br>
+      <p style="color:var(--text-dim)">
+        ここに最終章へのヒントや<br>
+        次の謎を書いてください。
+      </p>
+      <a href="end.html" class="final-link">
+        ▸ 最終ファイルへ →
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ─── 設定 ────────────────────────────────────────────────────────────
+  const CONFIG = {
+    CORRECT_SIGNAL: ['YOMI', 'yomi', '黄泉'],  // ← 答えを変更できる
+    HIDDEN_TEXT:    'YOMI',                     // ← Canvas上に描く文字
+    CASE_SENSITIVE: false,
+  };
+
+  // ─── Canvasセットアップ ──────────────────────────────────────────────
+  const spectroCanvas = document.getElementById('spectrogram-canvas');
+  const spectroCtx    = spectroCanvas.getContext('2d');
+  const waveCanvas    = document.getElementById('waveform-canvas');
+  const waveCtx       = waveCanvas.getContext('2d');
+
+  // 解像度調整
+  function resizeCanvas(canvas) {
+    canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
+    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+  }
+
+  // ─── スペクトログラム描画（謎の本体） ────────────────────────────────
+  function drawSpectrogram() {
+    resizeCanvas(spectroCanvas);
+    const w = spectroCanvas.width;
+    const h = spectroCanvas.height;
+    const ctx = spectroCtx;
+
+    // 背景
+    ctx.fillStyle = '#020a0f';
+    ctx.fillRect(0, 0, w, h);
+
+    // ─── ノイズベースのスペクトログラム風背景 ───────────────────────
+    const cols = 160;
+    const rows = 80;
+    const cw   = w / cols;
+    const ch   = h / rows;
+
+    for (let x = 0; x < cols; x++) {
+      for (let y = 0; y < rows; y++) {
+        // 低周波帯に強いエネルギー分布（自然なスペクトロ風）
+        const freqFactor  = 1 - (y / rows) * 0.8;
+        const timeFactor  = Math.sin(x * 0.1 + y * 0.05) * 0.5 + 0.5;
+        const noise       = Math.random() * 0.3;
+        const intensity   = (freqFactor * 0.5 + timeFactor * 0.3 + noise) * 0.6;
+
+        // 3200–3400 Hz帯域（= rows中央より少し上）に異常帯
+        const isAnomalyBand = y > rows * 0.35 && y < rows * 0.45;
+        const anomalyBoost  = isAnomalyBand ? 0.5 : 0;
+
+        const v = Math.min(1, intensity + anomalyBoost);
+
+        // カラーマップ：黒→濃青→シアン→白
+        let r, g, b;
+        if (v < 0.25) {
+          r = 0; g = 0; b = Math.floor(v * 4 * 80);
+        } else if (v < 0.5) {
+          const t = (v - 0.25) * 4;
+          r = 0; g = Math.floor(t * 100); b = Math.floor(80 + t * 100);
+        } else if (v < 0.75) {
+          const t = (v - 0.5) * 4;
+          r = Math.floor(t * 60); g = Math.floor(100 + t * 129); b = 200;
+        } else {
+          const t = (v - 0.75) * 4;
+          r = Math.floor(60 + t * 195); g = 229; b = 255;
+        }
+
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(x * cw, y * ch, cw + 1, ch + 1);
+      }
+    }
+
+    // ─── 隠し文字を異常帯域に埋め込む ──────────────────────────────
+    // 透明度を低くすることで"気づかれにくいが見える"程度の見え方にする
+    ctx.save();
+    ctx.globalAlpha = 0.22;   // ← 不透明度：低いほど難しい謎になる
+    ctx.font         = `bold ${Math.floor(h * 0.18)}px 'Courier New', monospace`;
+    ctx.fillStyle    = '#ffffff';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '8px';
+
+    // 異常帯域の中央Y座標
+    const targetY = h * 0.4;
+    ctx.fillText(CONFIG.HIDDEN_TEXT, w / 2, targetY);
+    ctx.restore();
+
+    // ─── 水平グリッドライン ─────────────────────────────────────────
+    ctx.strokeStyle = 'rgba(0,229,255,0.08)';
+    ctx.lineWidth   = 1;
+    for (let i = 0; i <= 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, (h / 8) * i);
+      ctx.lineTo(w, (h / 8) * i);
+      ctx.stroke();
+    }
+
+    // ─── 垂直グリッドライン ─────────────────────────────────────────
+    for (let i = 0; i <= 20; i++) {
+      ctx.beginPath();
+      ctx.moveTo((w / 20) * i, 0);
+      ctx.lineTo((w / 20) * i, h);
+      ctx.stroke();
+    }
+
+    // ─── 異常帯域マーカー ────────────────────────────────────────────
+    const bandTop = h * 0.35;
+    const bandBot = h * 0.45;
+    ctx.strokeStyle = 'rgba(255,179,0,0.4)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(0, bandTop); ctx.lineTo(w, bandTop); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, bandBot); ctx.lineTo(w, bandBot); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ─── 波形描画 ────────────────────────────────────────────────────────
+  function drawWaveform() {
+    resizeCanvas(waveCanvas);
+    const w   = waveCanvas.width;
+    const h   = waveCanvas.height;
+    const ctx = waveCtx;
+
+    ctx.fillStyle = '#050c12';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+
+    const points = 400;
+    for (let i = 0; i < points; i++) {
+      const x = (i / points) * w;
+      // 複数の周波数を重ね合わせた波形（リアリティのため）
+      const y = h / 2 +
+        Math.sin(i * 0.12) * h * 0.22 +
+        Math.sin(i * 0.37) * h * 0.10 +
+        Math.sin(i * 0.8 + 1) * h * 0.06 +
+        (Math.random() - 0.5) * h * 0.04;
+
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // 中央線
+    ctx.strokeStyle = 'rgba(0,229,255,0.15)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+  }
+
+  // ─── 再生ボタン（演出のみ） ───────────────────────────────────────────
+  let playing = false;
+  let timerId = null;
+  let elapsed = 0;
+
+  function togglePlay() {
+    const btn  = document.querySelector('.play-btn');
+    const disp = document.getElementById('time-display');
+    playing = !playing;
+
+    if (playing) {
+      btn.textContent = '⏸ 停止';
+      timerId = setInterval(() => {
+        elapsed++;
+        const s = String(elapsed % 60).padStart(2, '0');
+        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        disp.textContent = `${m}:${s} / 00:██`;
+        if (elapsed >= 20) { clearInterval(timerId); playing = false; btn.textContent = '▶ 再生'; }
+      }, 1000);
+    } else {
+      clearInterval(timerId);
+      btn.textContent = '▶ 再生';
+    }
+  }
+
+  // ─── シグナルコード検証 ─────────────────────────────────────────────
+  let failCount = 0;
+
+  function checkSignal() {
+    const input  = document.getElementById('signal-input');
+    const msg    = document.getElementById('decode-msg');
+    const reveal = document.getElementById('final-reveal');
+    let val      = input.value.trim();
+    if (!val) return;
+
+    const answers = CONFIG.CASE_SENSITIVE
+      ? CONFIG.CORRECT_SIGNAL
+      : CONFIG.CORRECT_SIGNAL.map(a => a.toLowerCase());
+
+    const check = CONFIG.CASE_SENSITIVE ? val : val.toLowerCase();
+
+    if (answers.includes(check)) {
+      input.classList.add('success');
+      input.disabled = true;
+      msg.textContent = 'シグナル解読成功。隠されたメッセージを復元しました。';
+      msg.className   = 'decode-msg success';
+      setTimeout(() => reveal.classList.add('visible'), 800);
+    } else {
+      failCount++;
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 400);
+      msg.textContent = `一致しません [${failCount}回]`;
+      msg.className   = 'decode-msg error';
+
+      if (failCount >= 3) {
+        msg.textContent += ' — スペクトログラムの異常帯域を注視せよ';
+      }
+    }
+  }
+
+  document.getElementById('signal-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') checkSignal();
+  });
+
+  // ─── 初期描画 ────────────────────────────────────────────────────────
+  drawSpectrogram();
+  drawWaveform();
+
+  // ウィンドウリサイズ時に再描画
+  window.addEventListener('resize', () => {
+    drawSpectrogram();
+    drawWaveform();
+  });
+</script>
+
+</body>
+</html>

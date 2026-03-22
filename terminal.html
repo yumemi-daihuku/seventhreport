@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TERMINAL — アクセス制限</title>
+  <!--
+    ARG LAYER 1:
+    このページはURLパラメータで起動する。
+    正しいコードは index.html のソースに隠された数字の積。
+    3 × 9 × 1 × 7 = 189
+    → /terminal.html?code=189
+  -->
+  <style>
+    :root {
+      --bg:        #000;
+      --green:     #00ff41;
+      --green-dim: #003b10;
+      --green-mid: #00802a;
+      --red:       #ff2b2b;
+      --amber:     #ffb300;
+      --text:      #00cc33;
+      --text-dim:  #004d15;
+      --font:      'Courier New', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ─── CRTスキャンライン ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.25) 2px, rgba(0,0,0,0.25) 4px
+      );
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ─── ヴィネット ─── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.9) 100%);
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    /* ─── ターミナルウィンドウ ─── */
+    .terminal {
+      width: 100%;
+      max-width: 720px;
+      border: 1px solid var(--green-mid);
+      box-shadow: 0 0 40px rgba(0,255,65,0.08), inset 0 0 60px rgba(0,0,0,0.5);
+      position: relative;
+    }
+
+    /* ─── タイトルバー ─── */
+    .titlebar {
+      background: var(--green-dim);
+      border-bottom: 1px solid var(--green-mid);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .btn { width: 10px; height: 10px; border-radius: 50%; }
+    .btn-r { background: var(--red); }
+    .btn-y { background: var(--amber); }
+    .btn-g { background: var(--green); animation: blink 2s infinite; }
+
+    /* ─── ターミナル本体 ─── */
+    .screen {
+      padding: 28px 32px;
+      min-height: 420px;
+      background: rgba(0,8,0,0.95);
+      font-size: 14px;
+      line-height: 2;
+    }
+
+    /* ─── ログ行 ─── */
+    .log-line {
+      margin-bottom: 4px;
+      opacity: 0;
+      transform: translateY(4px);
+      animation: fadein 0.3s ease forwards;
+    }
+
+    .log-line.ok   { color: var(--green); }
+    .log-line.err  { color: var(--red); }
+    .log-line.warn { color: var(--amber); }
+    .log-line.dim  { color: var(--text-dim); }
+    .log-line.sys  { color: #666; font-size: 12px; }
+
+    /* ─── プロンプト入力 ─── */
+    .prompt-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .prompt-sign { color: var(--green); font-size: 16px; }
+
+    #code-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--green-mid);
+      color: var(--green);
+      font-family: var(--font);
+      font-size: 14px;
+      outline: none;
+      letter-spacing: 4px;
+      width: 140px;
+      caret-color: var(--green);
+    }
+
+    .submit-btn {
+      background: transparent;
+      border: 1px solid var(--green-mid);
+      color: var(--green);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 4px 14px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: var(--green-dim);
+      box-shadow: 0 0 10px rgba(0,255,65,0.2);
+    }
+
+    /* ─── アクセス許可・拒否オーバーレイ ─── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(20px, 4vw, 32px);
+      letter-spacing: 6px;
+      font-weight: bold;
+      z-index: 10;
+    }
+
+    .overlay.granted {
+      background: rgba(0,10,0,0.92);
+      color: var(--green);
+      text-shadow: 0 0 20px var(--green);
+      animation: flash-green 0.4s ease;
+    }
+
+    .overlay.denied {
+      background: rgba(10,0,0,0.92);
+      color: var(--red);
+      text-shadow: 0 0 20px var(--red);
+      animation: shake 0.4s ease;
+    }
+
+    /* ─── アニメーション ─── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.1} }
+    @keyframes fadein { to { opacity:1; transform:translateY(0); } }
+
+    @keyframes flash-green {
+      0% { opacity: 0; transform: scale(1.04); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60% { transform: translateX(-6px); }
+      40%,80% { transform: translateX(6px); }
+    }
+
+    /* ─── 進行バー ─── */
+    .progress-bar {
+      height: 2px;
+      background: var(--green-dim);
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: var(--green);
+      animation: progress 2s linear forwards;
+    }
+
+    @keyframes progress { to { left: 0; } }
+  </style>
+</head>
+<body>
+
+<div class="terminal" id="terminal">
+
+  <!-- ─── タイトルバー ─── -->
+  <div class="titlebar">
+    <div class="btn btn-r"></div>
+    <div class="btn btn-y"></div>
+    <div class="btn btn-g"></div>
+    <span style="margin-left:12px">SECURE_TERMINAL v2.1 — ██████ AGENCY NODE</span>
+  </div>
+
+  <!-- ─── 進行バー（ページロード演出） ─── -->
+  <div class="progress-bar"></div>
+
+  <!-- ─── スクリーン ─── -->
+  <div class="screen" id="screen">
+    <!-- JavaScriptで動的にログを追加 -->
+  </div>
+
+  <!-- ─── アクセス許可・拒否オーバーレイ ─── -->
+  <div class="overlay granted" id="overlay-ok">
+    ▶ ACCESS GRANTED
+  </div>
+  <div class="overlay denied" id="overlay-ng">
+    ✕ ACCESS DENIED
+  </div>
+
+</div>
+
+<script>
+  // ─── 設定：謎の答えをここで管理 ────────────────────────────────────
+  const CONFIG = {
+    CORRECT_CODE:  '189',          // ← ここを書き換えるだけで謎の答えが変わる
+    NEXT_PAGE:     'archive.html', // ← 正解時の遷移先
+    HINT_VISIBLE:  false,          // ← trueにするとヒントをコンソールに出す
+  };
+
+  // ─── ターミナルログシーケンス ────────────────────────────────────────
+  const BOOT_LOG = [
+    { text: 'システム起動中...', cls: 'dim',  delay: 200  },
+    { text: 'セキュリティモジュール: ロード完了', cls: 'ok', delay: 600 },
+    { text: 'ネットワーク接続: 確立', cls: 'ok', delay: 900 },
+    { text: '警告: 不正アクセス試行 [3回]', cls: 'warn', delay: 1300 },
+    { text: '██████ 端末認証システム v2.1', cls: 'sys', delay: 1700 },
+    { text: '─────────────────────────────', cls: 'dim', delay: 2000 },
+    { text: 'このシステムへのアクセスには', cls: 'ok', delay: 2400 },
+    { text: '認証コードが必要です。', cls: 'ok', delay: 2700 },
+    { text: '─────────────────────────────', cls: 'dim', delay: 3000 },
+  ];
+
+  const screen = document.getElementById('screen');
+  let bootDone = false;
+
+  // ─── ログ行を追加するユーティリティ ─────────────────────────────────
+  function addLog(text, cls = '', delay = 0) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const line = document.createElement('div');
+        line.className = `log-line ${cls}`;
+        line.textContent = text;
+        // アニメーションdelay個別設定
+        screen.appendChild(line);
+        screen.scrollTop = screen.scrollHeight;
+        resolve();
+      }, delay);
+    });
+  }
+
+  // ─── 入力プロンプトを表示 ────────────────────────────────────────────
+  function showPrompt() {
+    const promptLine = document.createElement('div');
+    promptLine.className = 'prompt-line';
+    promptLine.innerHTML = `
+      <span class="prompt-sign">&gt;_</span>
+      <input id="code-input" type="text" maxlength="10"
+             placeholder="CODE" autocomplete="off" spellcheck="false">
+      <button class="submit-btn" onclick="checkCode()">ENTER</button>
+    `;
+    screen.appendChild(promptLine);
+    screen.scrollTop = screen.scrollHeight;
+
+    const input = document.getElementById('code-input');
+    input.focus();
+
+    // Enterキーでも送信
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') checkCode();
+    });
+  }
+
+  // ─── URLパラメータに正解コードが含まれているか確認 ─────────────────
+  function checkURLCode() {
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('code');
+    if (code === CONFIG.CORRECT_CODE) {
+      // URLから直接入力された場合：即座に認証成功
+      setTimeout(() => grantAccess(true), 3200);
+      return true;
+    }
+    return false;
+  }
+
+  // ─── 入力コードを検証 ────────────────────────────────────────────────
+  function checkCode() {
+    const input = document.getElementById('code-input');
+    if (!input) return;
+    const val = input.value.trim();
+
+    addLog(`> ${val}`, 'ok');
+    input.value = '';
+    input.disabled = true;
+
+    if (val === CONFIG.CORRECT_CODE) {
+      grantAccess(false);
+    } else {
+      denyAccess();
+    }
+  }
+
+  // ─── アクセス許可 ────────────────────────────────────────────────────
+  function grantAccess(fromURL) {
+    const overlay = document.getElementById('overlay-ok');
+    overlay.style.display = 'flex';
+
+    if (!fromURL) {
+      addLog('認証コード: ' + CONFIG.CORRECT_CODE + ' ……照合中', 'dim');
+    }
+
+    setTimeout(() => {
+      addLog('認証成功。', 'ok');
+      addLog('次のセクションへのアクセスを許可します。', 'ok');
+    }, 500);
+
+    // 2秒後に遷移
+    setTimeout(() => {
+      window.location.href = CONFIG.NEXT_PAGE;
+    }, 2200);
+  }
+
+  // ─── アクセス拒否 ────────────────────────────────────────────────────
+  let failCount = 0;
+  function denyAccess() {
+    failCount++;
+    const overlay = document.getElementById('overlay-ng');
+    overlay.style.display = 'flex';
+
+    addLog(`認証失敗 [試行 ${failCount}回目]`, 'err');
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      // 3回失敗でヒント
+      if (failCount >= 3) {
+        addLog('ヒント: ソースコードを調べよ。', 'warn');
+      }
+      // 入力を再度有効化
+      const input = document.getElementById('code-input');
+      if (input) {
+        input.disabled = false;
+        input.focus();
+      }
+    }, 1200);
+  }
+
+  // ─── ブート処理 ─────────────────────────────────────────────────────
+  async function boot() {
+    for (const entry of BOOT_LOG) {
+      await addLog(entry.text, entry.cls, entry.delay);
+    }
+
+    // URLコードチェック（直リンクでの解答）
+    const solvedByURL = checkURLCode();
+
+    if (!solvedByURL) {
+      showPrompt();
+    }
+
+    if (CONFIG.HINT_VISIBLE) {
+      console.log('%cCODE HINT: ' + CONFIG.CORRECT_CODE, 'color:#555');
+    }
+  }
+
+  boot();
+</script>
+
+</body>
+</html>

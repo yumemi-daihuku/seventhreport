@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第七報告書 — 未分類事案</title>
+  <!-- ===============================================================
+    ARG LAYER 0: この行を見つけたあなたへ。
+    数字を集めよ。 3 - 9 - 1 - 7
+    次の扉のコードは、この４つの数字の積である。
+    /terminal.html?code=XXXX
+  ================================================================ -->
+  <style>
+    /* ─── CSS変数：テーマカラー管理 ─── */
+    :root {
+      --bg:          #030303;
+      --surface:     #0a0a0a;
+      --border:      #1a1a1a;
+      --green:       #00ff41;
+      --green-dim:   #00802a;
+      --red:         #c0392b;
+      --red-bright:  #ff2b2b;
+      --amber:       #ffb300;
+      --text:        #cccccc;
+      --text-dim:    #555555;
+      --font-mono:   'Courier New', 'Lucida Console', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* ─── CRTスキャンラインオーバーレイ ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.18) 2px,
+        rgba(0,0,0,0.18) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── ノイズテクスチャ ─── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9998;
+      opacity: 0.6;
+    }
+
+    /* ─── レイアウト ─── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ─── ヘッダー：機密文書スタンプ風 ─── */
+    .doc-header {
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--red);
+      padding: 20px 28px;
+      margin-bottom: 48px;
+      position: relative;
+      animation: flicker 8s infinite;
+    }
+
+    .doc-header::before {
+      content: '██████ 機密 ██████';
+      position: absolute;
+      top: -13px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg);
+      color: var(--red);
+      font-size: 11px;
+      letter-spacing: 4px;
+      padding: 0 12px;
+    }
+
+    .doc-id {
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .doc-title {
+      color: var(--green);
+      font-size: clamp(18px, 3vw, 26px);
+      letter-spacing: 3px;
+      text-shadow: 0 0 12px var(--green-dim);
+      margin-bottom: 6px;
+    }
+
+    .doc-sub {
+      color: var(--text-dim);
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    /* ─── ステータスバー ─── */
+    .status-bar {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .status-bar span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red-bright);
+           box-shadow: 0 0 6px var(--red-bright); animation: blink 1.2s infinite; }
+    .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); animation-delay: 0.4s; }
+
+    /* ─── 本文セクション ─── */
+    .section {
+      margin-bottom: 40px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      color: var(--amber);
+      font-size: 10px;
+      letter-spacing: 4px;
+      margin-bottom: 14px;
+    }
+
+    .body-text {
+      line-height: 2;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .body-text p { margin-bottom: 16px; }
+
+    /* ─── 見え消し（情報隠蔽演出） ─── */
+    .redacted {
+      background: var(--red);
+      color: var(--red);
+      user-select: none;
+      padding: 0 4px;
+      cursor: not-allowed;
+      transition: background 0.3s;
+    }
+    /* HOVERで一瞬見えそうで見えない演出 */
+    .redacted:hover { background: #3a0000; color: #3a0000; }
+
+    /* ─── 警告ボックス ─── */
+    .alert-box {
+      border: 1px solid var(--red);
+      padding: 16px 20px;
+      margin: 24px 0;
+      background: rgba(192,57,43,0.06);
+      position: relative;
+    }
+
+    .alert-box::before {
+      content: '! WARNING';
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--bg);
+      color: var(--red-bright);
+      font-size: 10px;
+      letter-spacing: 3px;
+      padding: 0 8px;
+    }
+
+    .alert-text { color: var(--red-bright); font-size: 13px; line-height: 1.8; }
+
+    /* ─── 添付ファイルリスト ─── */
+    .attachment-list {
+      list-style: none;
+      font-size: 13px;
+    }
+
+    .attachment-list li {
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-dim);
+    }
+
+    .attachment-list li::before { content: '▸'; color: var(--green-dim); }
+
+    .attachment-list a {
+      color: var(--green);
+      text-decoration: none;
+      transition: text-shadow 0.2s, color 0.2s;
+    }
+
+    .attachment-list a:hover {
+      color: #fff;
+      text-shadow: 0 0 8px var(--green);
+    }
+
+    /* ─── フッター ─── */
+    .doc-footer {
+      margin-top: 60px;
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-align: center;
+      opacity: 0.5;
+    }
+
+    /* ─── グリッチテキスト演出 ─── */
+    .glitch {
+      position: relative;
+      display: inline-block;
+    }
+    .glitch::before, .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      opacity: 0.8;
+    }
+    .glitch::before {
+      color: var(--red);
+      clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%);
+      transform: translateX(-2px);
+      animation: glitch-a 4s infinite;
+    }
+    .glitch::after {
+      color: var(--green);
+      clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+      transform: translateX(2px);
+      animation: glitch-b 4s infinite;
+    }
+
+    /* ─── アニメーション ─── */
+    @keyframes blink {
+      0%,100% { opacity: 1; } 50% { opacity: 0.1; }
+    }
+
+    @keyframes flicker {
+      0%,98%,100% { opacity: 1; }
+      99% { opacity: 0.85; }
+    }
+
+    @keyframes glitch-a {
+      0%,90%,100% { transform: translateX(-2px) scaleY(1); opacity: 0; }
+      92% { transform: translateX(-4px) scaleY(1.02); opacity: 0.8; }
+      94% { transform: translateX(0); opacity: 0; }
+    }
+
+    @keyframes glitch-b {
+      0%,85%,100% { transform: translateX(2px) scaleY(1); opacity: 0; }
+      87% { transform: translateX(4px) scaleY(0.98); opacity: 0.8; }
+      89% { transform: translateX(0); opacity: 0; }
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+
+    /* ─── スキャンライン流れる演出 ─── */
+    .scanline-sweep {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, rgba(0,255,65,0.03), transparent);
+      animation: scanline 6s linear infinite;
+      pointer-events: none;
+      z-index: 9997;
+    }
+
+    /* ─── タイプライター演出 ─── */
+    .typewriter {
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 2px solid var(--green);
+      animation: typing 3s steps(40,end) forwards, blink-cursor 0.75s step-end infinite;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    @keyframes blink-cursor {
+      from, to { border-color: transparent; }
+      50% { border-color: var(--green); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="scanline-sweep"></div>
+
+<div class="container">
+
+  <!-- ─── ヘッダー ─── -->
+  <header class="doc-header">
+    <div class="doc-id">FILE_ID: SCP-7TH-BOUNDARY / CLASS: KETER / DATE: ██/██/20██</div>
+    <h1 class="doc-title glitch" data-text="第七報告書 — 未分類怪異事案">第七報告書 — 未分類怪異事案</h1>
+    <div class="doc-sub typewriter">ACCESS LEVEL: [REDACTED] &nbsp; AUTHORIZED VIEWER ONLY</div>
+  </header>
+
+  <!-- ─── ステータス ─── -->
+  <div class="status-bar">
+    <span><span class="dot"></span> 調査状況：進行中</span>
+    <span><span class="dot green"></span> 接続：確立</span>
+    <span>端末ID: NODE-██-████</span>
+    <span>最終更新: ██:██:██</span>
+  </div>
+
+  <!-- ─── 概要 ─── -->
+  <section class="section">
+    <div class="section-label">▎ SECTION 01 — 事案概要</div>
+    <div class="body-text">
+      <p>
+        本報告書は、<span class="redacted">████市████区</span>において確認された
+        未分類怪異事案に関する一次記録である。
+        最初の目撃報告は<span class="redacted">████年██月</span>に遡り、
+        現在も調査は継続中である。
+      </p>
+      <p>
+        当該事案に関与した人物は計 <strong style="color:var(--red-bright)">7名</strong> 。
+        そのうち <strong style="color:var(--red-bright)">5名</strong> が現在も行方不明。
+        残る2名の証言は互いに矛盾しており、信頼性は低い。
+      </p>
+    </div>
+
+    <div class="alert-box">
+      <p class="alert-text">
+        この文書を読み続けることで、あなたは何らかのリスクを
+        負う可能性があります。<br>
+        それでも続けるならば、注意深く観察してください。
+        <strong>すべてのものに意味がある。</strong>
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── 記録 ─── -->
+  <section class="section">
+    <div class="section-label">▎ SECTION 02 — 現場記録</div>
+    <div class="body-text">
+      <p>
+        ここにあなたのストーリーを書いてください。<br>
+        怪異の描写、発見者の証言、現場の状況などを記述します。<br>
+        <span style="color:var(--text-dim); font-size:12px;">
+          ← このテキストは自由に書き換えられます
+        </span>
+      </p>
+      <p>
+        現場には何かが残されていた。
+        それが何であるかを特定するためには、
+        <span class="redacted">次の扉</span> を見つけなければならない。
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── 添付ファイル ─── -->
+  <section class="section">
+    <div class="section-label">▎ SECTION 03 — 関連ファイル</div>
+    <ul class="attachment-list">
+      <li>
+        <a href="terminal.html">TERMINAL_ACCESS.log</a>
+        <span>— 端末ログ（要アクセスコード）</span>
+      </li>
+      <li>
+        <span style="color:var(--text-dim)">ARCHIVE_██.enc</span>
+        <span>— 暗号化済み（解読不可）</span>
+      </li>
+      <li>
+        <span style="color:var(--text-dim)">SIGNAL_DATA.wav</span>
+        <span>— 音声ファイル（破損）</span>
+      </li>
+    </ul>
+  </section>
+
+</div>
+
+<!-- ─── フッター ─── -->
+<footer class="doc-footer">
+  <p>このファイルは自動的に消去されます &nbsp;|&nbsp; 複製禁止 &nbsp;|&nbsp; ██████ 機関 所有</p>
+  <!-- ARG HINT: ページ最下部 -->
+  <!-- 3 -->
+</footer>
+
+<script>
+  // ─── コンソールメッセージ（ARG仕掛け） ─────────────────────────────
+  // プレイヤーがDevToolsを開いたときに表示されるメッセージ
+  const _msg = [
+    '%c████ SYSTEM MESSAGE ████',
+    'color: #ff2b2b; font-size: 18px; font-weight: bold;',
+  ];
+
+  // devtools検出：console出力のタイミングで仕掛けを発動
+  let _devOpen = false;
+  const _detector = new Image();
+  Object.defineProperty(_detector, 'id', {
+    get() {
+      _devOpen = true;
+      console.log(..._msg);
+      console.log('%cここまで来たか。', 'color:#00ff41; font-size:14px;');
+      console.log('%cヒント：9', 'color:#555; font-size:12px;');  // ← 謎のヒント断片
+      console.log('%c次は /terminal.html を探せ。', 'color:#555; font-size:11px;');
+    }
+  });
+  console.dir(_detector);
+
+  // ─── ランダムなグリッチ演出（まれにタイトルが乱れる） ─────────────
+  const title = document.querySelector('.doc-title');
+  const glitchChars = '█▓▒░▄▀■□▪▫';
+
+  function randomGlitch() {
+    if (Math.random() < 0.15) {   // 15%の確率でグリッチ
+      const orig = title.textContent;
+      const idx  = Math.floor(Math.random() * orig.length);
+      const gc   = glitchChars[Math.floor(Math.random() * glitchChars.length)];
+      title.textContent = orig.slice(0, idx) + gc + orig.slice(idx + 1);
+      setTimeout(() => { title.textContent = orig; }, 80);
+    }
+    setTimeout(randomGlitch, Math.random() * 3000 + 1000);
+  }
+  randomGlitch();
+</script>
+
+</body>
+</html>
