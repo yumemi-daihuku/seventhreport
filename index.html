@@ -151,6 +151,32 @@
     @keyframes bob    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
     @keyframes ga { 0%,88%,100%{opacity:0;transform:translateX(-3px)} 90%{opacity:0.8;transform:translateX(3px)} 92%{opacity:0} }
     @keyframes gb { 0%,83%,100%{opacity:0;transform:translateX(3px)} 85%{opacity:0.8;transform:translateX(-3px)} 87%{opacity:0} }
+
+    /* ─── 被害者一覧テーブル ─── */
+    .victim-table {
+      width: 100%; border-collapse: collapse;
+      margin-top: 20px; font-size: 13px;
+    }
+    .victim-table th {
+      text-align: left; padding: 10px 14px;
+      font-size: 10px; letter-spacing: 2px; color: var(--dim);
+      border-bottom: 1px solid var(--border);
+    }
+    .victim-table td {
+      padding: 12px 14px; border-bottom: 1px dashed var(--border);
+      color: var(--text); line-height: 1.6;
+    }
+    .victim-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .name-initial {
+      color: var(--amber); font-weight: bold;
+      font-size: 1.05em; text-shadow: 0 0 6px rgba(255,179,0,0.4);
+    }
+    .status-missing { color: var(--red-b); letter-spacing: 1px; }
+    .status-alive   { color: var(--green-mid); letter-spacing: 1px; }
+    .table-note {
+      margin-top: 14px; font-size: 11px; color: var(--dim);
+      line-height: 2; padding-left: 4px;
+    }
   </style>
 </head>
 <body>
@@ -186,65 +212,143 @@
         <span class="digit-reveal" id="d2">5</span>
         名が現在も行方不明。残る2名の証言は互いに矛盾しており、信頼性は低い。
       </p>
+      <p>
+        本報告書自体が「接触媒体」に該当する可能性を、担当調査員██は提出の翌日に指摘した。<br>
+        その翌朝、██は失踪した。
+      </p>
     </div>
     <div class="warn-box">
       <p class="warn-text">
-        この文書を読み続けることで、あなたは何らかのリスクを負う可能性があります。<br>
+        この文書を読み続けることで、お前はすでに「接触者」となっている可能性がある。<br>
         それでも続けるならば、<strong>散らばる数字を覚えておくこと。</strong>
       </p>
     </div>
   </section>
 
   <section class="section">
-    <div class="sec-label">▎ SECTION 02 — 現場記録</div>
+    <div class="sec-label">▎ SECTION 02 — 事象の概要</div>
     <div class="body-text">
       <p>
-        ここにあなたのストーリーを書いてください。<br>
-        怪異の描写、発見者の証言、現場の状況などを記述します。<br>
-        <span style="color:var(--dim); font-size:12px;">← このテキストは自由に書き換えられます</span>
-      </p>
-      <p>
-        現場には合計
-        <span class="digit-reveal" id="d3">3</span>
-        つの痕跡が残されていた。いずれも人為的なものとは考えにくい。
-        <!-- data-variants：配列の順に1回ずつ変化し、最後の文で固定される -->
+        20██年██月、特定のウェブサイトを閲覧した者が現実に異変をきたす事象が相次いだ。
+        症状は段階的に進行する。最初は「画面の中に自分ではないものが映る」という軽微なもの。
+        やがて「現実の鏡や水面が正常に反射しなくなる」「夢と現実の境界が曖昧になる」、
         <span class="mutate" id="mut1"
-          data-variants='["壁の文様は、最初からそこにあったわけではない。","文様は——増えている。"]'>
-          調査員が最初に気づいたのは、壁に刻まれた文様だった。
+          data-variants='["そして——失踪。","最終的に、消える。"]'>
+          そして最終的に失踪へと至る。
         </span>
       </p>
       <p>
-        文様は全部で
-        <span class="digit-reveal" id="d4">9</span>
-        種類。それぞれが異なる意味を持つとされているが、
+        感染経路は現時点で特定されていないが、共通点として「同一のドメインを経由したアクセス」が
+        全
+        <span class="digit-reveal" id="d3">3</span>
+        件の初期感染事例で確認されている。
+        当該ドメインは現在も稼働中であり、
         <span class="mutate" id="mut2"
-          data-variants='["解読班は全員、任務中に失踪した。","解読した者は、戻ってこなかった。"]'>
-          解読できたものは未だにない。
+          data-variants='["アクセス数は増加し続けている。","閲覧者は、増え続けている。"]'>
+          閲覧者数は調査開始以降も増加の一途を辿っている。
         </span>
       </p>
     </div>
   </section>
 
   <section class="section">
-    <div class="sec-label">▎ SECTION 03 — 目撃者証言（抜粋）</div>
+    <div class="sec-label">▎ SECTION 03 — 被害者一覧</div>
     <div class="body-text">
       <p>
-        ここに証言などを書いてください。<br>
-        <span style="color:var(--dim); font-size:12px;">← このテキストは自由に書き換えられます</span>
+        以下は本事案の関与者
+        <span class="digit-reveal" id="d4">9</span>
+        件の報告のうち、身元が確認された
+        <span style="color:var(--red-b); font-weight:bold;">7名</span>
+        の一覧である。
+      </p>
+    </div>
+
+    <!-- 被害者一覧テーブル -->
+    <table class="victim-table">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>氏名（ローマ字）</th>
+          <th>初回接触日</th>
+          <th>状態</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>001</td>
+          <td><span class="name-initial">A</span>sakura Makoto（朝倉 誠）</td>
+          <td>20██/██/03</td>
+          <td class="status-missing">行方不明</td>
+        </tr>
+        <tr>
+          <td>002</td>
+          <td><span class="name-initial">N</span>ishimura Haruka（西村 遥）</td>
+          <td>20██/██/07</td>
+          <td class="status-missing">行方不明</td>
+        </tr>
+        <tr>
+          <td>003</td>
+          <td><span class="name-initial">O</span>onuma Takumi（大沼 拓海）</td>
+          <td>20██/██/11</td>
+          <td class="status-missing">行方不明</td>
+        </tr>
+        <tr>
+          <td>004</td>
+          <td><span class="name-initial">M</span>inakuchi Sakura（水口 さくら）</td>
+          <td>20██/██/14</td>
+          <td class="status-missing">行方不明</td>
+        </tr>
+        <tr>
+          <td>005</td>
+          <td><span class="name-initial">A</span>raki Hayate（荒木 隼）</td>
+          <td>20██/██/19</td>
+          <td class="status-missing">行方不明</td>
+        </tr>
+        <tr>
+          <td>006</td>
+          <td><span class="name-initial">L</span>agarta Chihiro（流田 千尋）</td>
+          <td>20██/██/22</td>
+          <td class="status-alive">生存・証言済</td>
+        </tr>
+        <tr>
+          <td>007</td>
+          <td><span class="name-initial">Y</span>uuki Tooru（結城 透）</td>
+          <td>20██/██/28</td>
+          <td class="status-alive">生存・証言拒否</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="table-note">
+      ※ 証言録は別ファイルに保管。アクセスには復号キーが必要。<br>
+      ※ 流田の証言中に不審な発言あり。詳細は ARCHIVE_██ を参照。
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="sec-label">▎ SECTION 04 — 目撃者証言（抜粋）</div>
+    <div class="body-text">
+      <p>
+        以下は生存者・流田 千尋による第一回聴取の抜粋である。
       </p>
       <p>
-        「あれは明らかに生き物ではなかった。でも、動いていた。
-        ゆっくりと、
+        「画面を閉じても、消えなかった。目を閉じても、いた。
+        あれは最初から、こちらを見ていたんだと思う。
         <span class="mutate" id="mut3"
-          data-variants='["こちらを見るように——","お前を探すように——"]'>
-          確かめるように——
+          data-variants='["私たちが見ていたんじゃない。","見られていたんだ。——最初から。"]'>
+          私たちが見ていたんじゃなく、見られていたんだ。
         </span>」
       </p>
+      <p>
+        「彼らは消えたんじゃない。……移動した、んだと思う。
+        あの子たちの名前を、ちゃんと覚えていてほしい。
+        <strong style="color:var(--amber);">彼ら全員の名が、答えを示している。</strong>」
+      </p>
     </div>
   </section>
 
   <section class="section">
-    <div class="sec-label">▎ SECTION 04 — 関連ファイル</div>
+    <div class="sec-label">▎ SECTION 05 — 関連ファイル</div>
     <ul class="attach-list">
       <li>
         <a href="terminal.html">TERMINAL_ACCESS.log</a>

@@ -141,14 +141,21 @@
   <div class="box">
     <div class="file-card">
       <div class="f-meta">FILE_ID: ARC-███-0071 &nbsp;|&nbsp; CLASS: EYES_ONLY</div>
-      <div class="f-name">「████の証言記録」— 第三回聴取</div>
+      <div class="f-name">流田 千尋 — 第三回聴取記録</div>
       <div class="f-desc">このファイルは暗号化されています。解読キーを知る者のみが閲覧できます。</div>
       <div class="doc-preview" id="preview">
-        調査員：では、もう一度聞かせてください。その夜、あなたは何を見たのですか。<br>
-        証人：鏡の中に… 自分ではない何かが映っていました。<br>
-        調査員：それは人間の形をしていましたか？<br>
-        証人：いいえ。でも、笑っていた。確かに、笑っていた。<br><br>
-        ← ここにあなたのストーリーを書いてください
+        調査員：では、改めて聞かせてください。あの夜、最初に何が起きましたか。<br>
+        流田：画面の中に、何かがいた。最初は一瞬だけだった。でも日が経つにつれて、長くなっていった。<br><br>
+        調査員：朝倉さんや西村さんが失踪した夜のことは覚えていますか。<br>
+        流田：あの二人は……私より先に、深く見てしまったんだと思う。大沼くんも、水口さんも、荒木くんも。みんな同じだった。<br><br>
+        調査員：「同じ」とは？<br>
+        流田：最後に「名前を呼ばれた」と言っていた。全員。<br><br>
+        調査員：あなたは呼ばれなかった？<br>
+        流田：……呼ばれた。でも、私は答えなかった。<br>
+        流田：結城くんも、答えなかった。だから私たちは残った。<br><br>
+        調査員：最後に。あなたは今も、あれが何だったと思いますか。<br>
+        流田：わからない。でも一つだけ言えることがある。<br>
+        流田：<strong>彼ら全員の名が、答えを示している。</strong>报告書の一覧を見ろ。ローマ字で。順番通りに。
       </div>
     </div>
 
@@ -159,7 +166,7 @@
                spellcheck="false" placeholder="キーワードを入力...">
       </div>
       <div class="hint-text" id="hint">
-        ……鍵は、証言の中にある。繰り返された言葉だ。
+        ……報告書に戻れ。被害者一覧のローマ字表記、先頭の文字を順に並べろ。
       </div>
       <button class="pw-btn" onclick="checkPW()">DECRYPT</button>
       <div class="msg" id="msg"></div>
@@ -179,7 +186,7 @@
 <script src="horror.js"></script>
 
 <script>
-  const CONFIG = { ANSWERS: ['kagami', 'かがみ', '鏡'] };
+  const CONFIG = { ANSWERS: ['ANOMALY', 'anomaly'] };
 
   // 煽りセリフ（失敗回数順）
   const TAUNTS = [
@@ -220,7 +227,7 @@
 
       if (fails >= 3) {
         hint.classList.add('show');
-        window.horrorShowBottom('……鍵は、証言の中にある。繰り返された言葉だ。', 5000);
+        window.horrorShowBottom('……報告書に戻れ。被害者一覧のローマ字の頭文字を順に並べろ。', 5000);
       }
     }
   }
