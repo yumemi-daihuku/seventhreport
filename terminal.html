@@ -187,8 +187,10 @@
     const inp = document.getElementById('code-input');
     if (!inp) return;
     const val = inp.value.trim();
+    if (!val) return;
     addLog('> ' + val, 'ok');
-    inp.value = ''; inp.disabled = true;
+    inp.value = '';
+    inp.disabled = true;
 
     if (val === CONFIG.CORRECT_CODE) {
       document.getElementById('ov-ok').style.display = 'flex';

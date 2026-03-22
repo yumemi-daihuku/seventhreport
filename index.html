@@ -386,23 +386,34 @@ const digitObserver = new IntersectionObserver(entries => {
   if (el) digitObserver.observe(el);
 });
 
-// ── 関与者数：「9」= 7(固定被害者) + VIEWER数
-// horror.js の initViewer が viewer カウントを更新するたびにこちらも追従する
-(function syncReportCount() {
+// ── 関与者数：7(固定被害者) + VIEWER数でリアルタイム更新
+// horror.jsのDOM生成が完了してからheader-viewerを参照する必要があるためloadで遅延
+window.addEventListener('load', function () {
   const el = document.getElementById('report-count');
   if (!el) return;
-  const viewerEl = document.getElementById('header-viewer');
-  if (!viewerEl) return;
 
   function update() {
+    const viewerEl = document.getElementById('header-viewer');
+    if (!viewerEl) {
+      el.textContent = '8'; // フォールバック
+      return;
+    }
     const match = viewerEl.textContent.match(/\d+/);
     if (!match) return;
     el.textContent = 7 + parseInt(match[0], 10);
   }
 
+  // 初回更新
   update();
-  new MutationObserver(update).observe(viewerEl, { childList: true, subtree: true, characterData: true });
-})();
+
+  // header-viewerの変化を監視
+  const viewerEl = document.getElementById('header-viewer');
+  if (viewerEl) {
+    new MutationObserver(update).observe(viewerEl, {
+      childList: true, subtree: true, characterData: true
+    });
+  }
+});
 
 // ── テキスト書き換え（変化後は固定）
 // 各 .mutate 要素を data-variants の順に一度ずつ書き換え、最後で止まる
