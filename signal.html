@@ -353,6 +353,11 @@
         msg.textContent = taunt + ' ' + hint;
         window.horrorShowBottom(hint, 5000);
       }
+      if (fails >= 8) {
+        const hint2 = '……M・I・R・R・O・R。6文字だ。';
+        msg.textContent = hint2;
+        window.horrorShowBottom(hint2, 5000);
+      }
     }
   }
 

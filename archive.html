@@ -245,6 +245,11 @@
         hint.classList.add('show');
         window.horrorShowBottom('……日本で使われているが、日本語ではない。', 5000);
       }
+      if (fails >= 8) {
+        const hint2 = '……大沼が夢で見た場所の名前だ。「よみ」と読む。';
+        msg.textContent = taunt + ' ' + hint2;
+        window.horrorShowBottom(hint2, 5000);
+      }
     }
   }
 

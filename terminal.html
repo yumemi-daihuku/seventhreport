@@ -226,6 +226,11 @@
           addLog(hint, 'warn');
           window.horrorShowBottom(hint, 5000);
         }
+        if (fails >= 8) {
+          const hint2 = '……7人いる。A、N、O、M、A、L、Y。並べろ。';
+          addLog(hint2, 'warn');
+          window.horrorShowBottom(hint2, 5000);
+        }
         inp.disabled = false; inp.focus();
       }, 1200);
     }
